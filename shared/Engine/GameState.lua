@@ -3,6 +3,7 @@ local Board = require(script.Parent.Board)
 local TurnManager = require(script.Parent.TurnManager)
 local ResourceSystem = require(script.Parent.ResourceSystem)
 local WinSystem = require(script.Parent.WinSystem)
+local CaptureSystem = require(script.Parent.CaptureSystem)
 
 local GameState = {}
 GameState.__index = GameState
@@ -13,9 +14,9 @@ function GameState.new(MapData, startingGridSize)
     self.board = Board.new(startingGridSize or MapData.DefaultGridSize, MapData)
     self.turnManager = TurnManager.new({"Player", "AI1", "AI2"})
     self.teamResources = {
-        Player = {Gold = 0, Food = 0, Wood = 0},
-        AI1    = {Gold = 0, Food = 0, Wood = 0},
-        AI2    = {Gold = 0, Food = 0, Wood = 0}
+        Player = {Gold = 0, Food = 0, Wood = 0, Relic = 0},
+        AI1    = {Gold = 0, Food = 0, Wood = 0, Relic = 0},
+        AI2    = {Gold = 0, Food = 0, Wood = 0, Relic = 0}
     }
     self.gameActive = true
     self.winner = nil
@@ -44,19 +45,39 @@ function GameState:getCurrentTeam()
 end
 
 function GameState:advanceTurn()
+    -- Generate resources for all teams at the start of the turn
+    self:generateTurnResources()
     self.turnManager:advance()
-    if self:getCurrentTeam() ~= "Player" then
-        -- AI turn will be handled externally; just advance
+end
+
+function GameState:generateTurnResources()
+    for teamName, resources in pairs(self.teamResources) do
+        -- Calculate production from all territories owned by this team
+        local production = {Gold = 0, Food = 0, Wood = 0, Relic = 0}
+        for x = 1, self.board.gridSize do
+            for y = 1, self.board.gridSize do
+                local cell = self.board:getCell(x, y)
+                if cell and cell.owner == teamName then
+                    for resType, amount in pairs(cell.productionPerTurn) do
+                        production[resType] = (production[resType] or 0) + amount
+                    end
+                end
+            end
+        end
+        -- Add production to team resources
+        for resType, amount in pairs(production) do
+            self.teamResources[teamName][resType] = (self.teamResources[teamName][resType] or 0) + amount
+        end
     end
 end
 
 function GameState:checkWin()
-    return WinState.checkWin(self.board)
+    return WinSystem.checkWin(self.board)
 end
 
 function GameState:applyCapture(team, chosenColor, captureSystem)
-    local capturedCells, gainedResources = captureSystem:capture(self.board, team, chosenColor)
-    -- Update resources
+    local capturedCells, gainedResources = captureSystem:capture(self.board, team, chosenColor, self.MapData)
+    -- Update resources: add gainedResources (which includes baseYield from capture)
     for resType, amount in pairs(gainedResources) do
         self.teamResources[team][resType] = self.teamResources[team][resType] + amount
     end
