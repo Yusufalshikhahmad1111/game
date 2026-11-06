@@ -1,5 +1,6 @@
 -- shared/Engine/MultiplayerManager.lua (ModuleScript)
 -- M6: Multiplayer - lobby, team mapping, ready state, match flow
+-- M7: Stabilization - fixed turn timeout cancellation, AI team representation
 local Players = game:GetService("Players")
 
 local MultiplayerManager = {}
@@ -23,6 +24,11 @@ function MultiplayerManager.new()
     self.playerTeams = {}      -- [Player] = teamName
     self.teamPlayers = {}      -- [teamName] = Player or nil
     
+    -- Pre-populate AI teams as nil (AI-controlled by default)
+    for _, teamName in ipairs(AVAILABLE_TEAMS) do
+        self.teamPlayers[teamName] = nil
+    end
+    
     -- Lobby state
     self.lobbyState = LOBBY_WAITING
     self.readyPlayers = {}     -- [Player] = boolean
@@ -31,10 +37,10 @@ function MultiplayerManager.new()
     self.matchActive = false
     self.currentMatchId = nil
     
-    -- Turn timeout
+    -- Turn timeout (M7: use task.cancel instead of Disconnect on thread)
     self.turnTimeoutDuration = 30 -- seconds
     self.turnStartTime = nil
-    self.turnTimeoutConnection = nil
+    self.turnTimeoutThread = nil  -- M7: store thread, not connection
     
     -- Rate limiting per player
     self.playerRequestTimes = {} -- [Player] = {lastRequestTime, requestCount}
@@ -57,7 +63,17 @@ function MultiplayerManager:assignTeam(player)
         return self.playerTeams[player]
     end
     
-    -- Find first available team
+    -- Find first available human-assignable team
+    -- Player can only take "Player" team; AI1/AI2 are reserved for AI unless explicitly overridden
+    local preferredTeam = "Player"
+    if not self.teamPlayers[preferredTeam] then
+        self.playerTeams[player] = preferredTeam
+        self.teamPlayers[preferredTeam] = player
+        self.readyPlayers[player] = false
+        return preferredTeam
+    end
+    
+    -- Fallback: any available team
     for _, teamName in ipairs(AVAILABLE_TEAMS) do
         if not self.teamPlayers[teamName] then
             self.playerTeams[player] = teamName
@@ -162,12 +178,8 @@ function MultiplayerManager:startMatch(matchId)
     self.lobbyState = LOBBY_IN_MATCH
     self.turnStartTime = tick()
     
-    -- AI fills remaining teams
-    for teamName, player in pairs(self.teamPlayers) do
-        if not player then
-            -- This team is AI-controlled
-        end
-    end
+    -- AI fills remaining teams (those without a human player)
+    -- AI1 and AI2 remain nil in teamPlayers, meaning AI-controlled
     
     return true
 end
@@ -183,22 +195,21 @@ function MultiplayerManager:endMatch()
         self.readyPlayers[player] = false
     end
     
-    if self.turnTimeoutConnection then
-        self.turnTimeoutConnection:Disconnect()
-        self.turnTimeoutConnection = nil
-    end
+    -- M7: Cancel timeout thread safely instead of Disconnect()
+    self:stopTurnTimeout()
 end
 
 -- ============================================================
--- TURN TIMEOUT
+-- TURN TIMEOUT (M7: Fixed cancellation)
 -- ============================================================
 
 function MultiplayerManager:startTurnTimeout(onTimeoutCallback)
     self:stopTurnTimeout()
     self.turnStartTime = tick()
     
-    self.turnTimeoutConnection = task.delay(self.turnTimeoutDuration, function()
-        self.turnTimeoutConnection = nil
+    -- M7: Use task.delay and store the thread; cancel with task.cancel()
+    self.turnTimeoutThread = task.delay(self.turnTimeoutDuration, function()
+        self.turnTimeoutThread = nil
         if onTimeoutCallback then
             onTimeoutCallback()
         end
@@ -206,9 +217,10 @@ function MultiplayerManager:startTurnTimeout(onTimeoutCallback)
 end
 
 function MultiplayerManager:stopTurnTimeout()
-    if self.turnTimeoutConnection then
-        self.turnTimeoutConnection:Disconnect()
-        self.turnTimeoutConnection = nil
+    if self.turnTimeoutThread then
+        -- M7: task.cancel is the correct way to cancel a task.delay thread
+        task.cancel(self.turnTimeoutThread)
+        self.turnTimeoutThread = nil
     end
     self.turnStartTime = nil
 end
@@ -268,7 +280,9 @@ function MultiplayerManager:onPlayerDisconnected(player)
         table.insert(self.aiControlledTeams, teamName)
     end
     
-    -- If match was active, end it (or could continue with AI)
+    -- If match was active, AI takes over this team automatically
+    -- (handled by GameManager checking isAIControlled)
+    
     if self.matchActive then
         -- Match continues with AI replacing the disconnected player
     end
@@ -292,7 +306,9 @@ end
 -- ============================================================
 
 function MultiplayerManager:isAIControlled(teamName)
-    return not self.teamPlayers[teamName]
+    -- A team is AI-controlled if no human player is assigned to it
+    local player = self.teamPlayers[teamName]
+    return player == nil
 end
 
 function MultiplayerManager:getHumanPlayers()

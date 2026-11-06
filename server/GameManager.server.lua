@@ -1,5 +1,5 @@
 -- ServerScriptService/GameManager.server.lua (Script)
--- M6: Multiplayer + Fairness integrated
+-- M7: Final Stabilization - Multiplayer + Fairness + Powers + Events + Progression
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
@@ -41,6 +41,9 @@ local aiPlayers = {}
 local currentModifier = "Classic"
 local eventChancePerTurn = MatchModifierSystem:getEventFrequency()
 
+-- M7: Track whether progression has been recorded for current match
+local matchProgressionRecorded = false
+
 -- ============================================================
 -- HELPER: BROADCAST FUNCTIONS (PER-PLAYER VISIBILITY)
 -- ============================================================
@@ -71,17 +74,17 @@ local function broadcastResourcesToAll()
 end
 
 local function broadcastPowerState()
-    if not gameState then return end
     local cooldowns = PowerSystem:getAllCooldowns()
+    local teamEffects = PowerSystem:getAllTeamEffects()
     EventNotify:FireAllClients({
         type = "PowerState",
         cooldowns = cooldowns,
-        powers = PowerSystem:getAllPowers()
+        powers = PowerSystem:getAllPowers(),
+        teamEffects = teamEffects
     })
 end
 
 local function broadcastEvents()
-    if not gameState then return end
     local activeEvents = EventSystem:getAllActiveEvents()
     EventNotify:FireAllClients({
         type = "Events",
@@ -96,6 +99,25 @@ end
 local function broadcastMatchState()
     if not gameState then return end
     MatchState:FireAllClients(mpManager:getMatchData())
+end
+
+-- ============================================================
+-- PROGRESSION: Single-match recording helper
+-- ============================================================
+
+local function recordMatchProgression(won)
+    -- M7: Ensure progression is recorded exactly once per match
+    if matchProgressionRecorded then return end
+    if not gameState then return end
+    if gameState:isMatchRecorded() then return end
+    
+    gameState:setMatchRecorded(true)
+    matchProgressionRecorded = true
+    
+    local difficultyModifier = MatchModifierSystem:getResourceMultiplier()
+    ProgressionSystem:recordMatch(won, difficultyModifier)
+    
+    print(string.format("[Progression] Match recorded: won=%s, difficultyModifier=%.2f", tostring(won), difficultyModifier))
 end
 
 -- ============================================================
@@ -131,14 +153,14 @@ end
 local function createGameState(gridSize)
     gameState = GameState.new(MapData, gridSize or MapData.DefaultGridSize)
     
-    -- Initialize AI players for AI-controlled teams
+    -- M7: Initialize AI players for ALL AI-controlled teams (AI1, AI2 always)
+    -- This ensures single-player mode works: Player vs AI1 vs AI2
     aiPlayers = {}
-    for teamName, player in pairs(mpManager.teamPlayers) do
-        if not player then
-            -- AI-controlled team
-            local config = AIConfig.DefaultAIs[teamName] or {personality = "Warlord", difficulty = "Normal"}
-            aiPlayers[teamName] = AIPlayer.new(teamName, config.personality, config.difficulty)
-        end
+    local aiTeams = mpManager:getAIControlledTeams()
+    for _, teamName in ipairs(aiTeams) do
+        local config = AIConfig.DefaultAIs[teamName] or {personality = "Warlord", difficulty = "Normal"}
+        aiPlayers[teamName] = AIPlayer.new(teamName, config.personality, config.difficulty)
+        print(string.format("[AI] Initialized %s as %s/%s", teamName, config.personality, config.difficulty))
     end
     
     -- Initialize team resources from modifier
@@ -148,6 +170,10 @@ local function createGameState(gridSize)
         res.Food = startingRes.Food
         res.Wood = startingRes.Wood
     end
+    
+    -- Reset progression flag for new match
+    matchProgressionRecorded = false
+    gameState:setMatchRecorded(false)
 end
 
 local function advanceTurnAndProcess()
@@ -159,7 +185,7 @@ local function advanceTurnAndProcess()
     if won then
         gameState:setGameOver(winner)
         GameOver:FireAllClients(winner)
-        ProgressionSystem:recordMatch(true, 1.0)
+        recordMatchProgression(true)
         mpManager:endMatch()
         broadcastMatchState()
         return
@@ -228,16 +254,13 @@ local function handlePlayerTurn(player, colorName)
     local capturedCount, gainedResources = gameState:applyCapture(teamName, colorName, CaptureSystem)
     ProgressionSystem:addGoldEarned(gainedResources.Gold or 0)
     
-    -- Record progression for this player
-    ProgressionSystem:recordMatch(false, 1.0) -- will be updated on win
-    
     stopTurnTimeout()
     
     local won, winner = gameState:checkWin()
     if won then
         gameState:setGameOver(winner)
         GameOver:FireAllClients(winner)
-        ProgressionSystem:recordMatch(true, 1.0)
+        recordMatchProgression(true)
         mpManager:endMatch()
         broadcastMatchState()
         return
@@ -253,8 +276,10 @@ local function handleAITurn(team)
     
     local aiPlayer = aiPlayers[team]
     if not aiPlayer then
-        advanceTurnAndProcess()
-        return
+        -- AI player not initialized; create it now
+        local config = AIConfig.DefaultAIs[team] or {personality = "Warlord", difficulty = "Normal"}
+        aiPlayers[team] = AIPlayer.new(team, config.personality, config.difficulty)
+        aiPlayer = aiPlayers[team]
     end
     
     local chosenColor, err = aiPlayer:chooseColor(gameState, MapData)
@@ -276,13 +301,48 @@ local function handleAITurn(team)
     if won then
         gameState:setGameOver(winner)
         GameOver:FireAllClients(winner)
-        ProgressionSystem:recordMatch(false, 1.0)
+        recordMatchProgression(false) -- AI won, player lost
         mpManager:endMatch()
         broadcastMatchState()
         return
     end
     
     advanceTurnAndProcess()
+end
+
+-- ============================================================
+-- POWER EXECUTION (Server-authoritative, validated)
+-- ============================================================
+
+local function executePowerEffect(teamName, powerName, targetCellId)
+    local power = PowerSystem:getPower(powerName)
+    if not power then return false, "Invalid power" end
+    
+    -- Check cooldown
+    if PowerSystem:isOnCooldown(powerName) then
+        return false, "Power on cooldown"
+    end
+    
+    -- Check affordability
+    local teamRes = gameState.teamResources[teamName]
+    if not teamRes then return false, "No team resources" end
+    if not PowerSystem:canAfford(teamRes, powerName) then
+        return false, "Insufficient resources"
+    end
+    
+    -- Apply cost
+    PowerSystem:applyCost(teamRes, powerName)
+    
+    -- Activate global cooldown
+    PowerSystem:activatePower(powerName, targetCellId, {})
+    
+    -- Execute gameplay effect
+    local success, message = PowerSystem:executePower(gameState.board, gameState, teamName, powerName, targetCellId)
+    
+    -- Record progression
+    ProgressionSystem:recordPowerUsed(powerName)
+    
+    return success, message
 end
 
 -- ============================================================
@@ -322,7 +382,6 @@ end)
 StartMatch.OnServerEvent:Connect(function(player)
     if not mpManager:checkRateLimit(player) then return end
     
-    -- Verify the player is in lobby and can start
     local teamName = mpManager:getPlayerTeam(player)
     if not teamName then return end
     if not mpManager:canStartMatch() then return end
@@ -372,7 +431,7 @@ SetMapSize.OnServerEvent:Connect(function(player, size)
 end)
 
 -- Use power
-UsePower.OnServerEvent:Connect(function(player, powerName)
+UsePower.OnServerEvent:Connect(function(player, powerName, targetCellId)
     if not mpManager:checkRateLimit(player) then return end
     if not gameState then return end
     if not ValidationSystem.validateGameActive(gameState:isActive()) then return end
@@ -381,23 +440,19 @@ UsePower.OnServerEvent:Connect(function(player, powerName)
     if not teamName then return end
     if gameState.turnManager:getCurrentTeam() ~= teamName then return end
     
-    local power = PowerSystem:getPower(powerName)
-    if not power then return end
-    if PowerSystem:isOnCooldown(powerName) then return end
-    if not PowerSystem:canAfford(gameState.teamResources[teamName], powerName) then return end
+    local success, message = executePowerEffect(teamName, powerName, targetCellId)
+    if not success then
+        warn("Power failed for " .. player.Name .. ": " .. message)
+        return
+    end
     
-    PowerSystem:applyCost(gameState.teamResources[teamName], powerName)
-    PowerSystem:activatePower(powerName, nil, {})
-    ProgressionSystem:recordPowerUsed(powerName)
+    print(string.format("[Power] %s used %s: %s", teamName, powerName, message))
     
     broadcastResourcesToPlayer(player)
     broadcastPowerState()
     
-    if powerName == "Harvest" then
-        print("[Power] Harvest activated for " .. teamName)
-    elseif powerName == "Fortify" then
-        print("[Power] Fortify activated for " .. teamName)
-    end
+    -- After using a power, if it's still the same team's turn, they can continue
+    -- Some powers end turn, some don't. For now, powers don't end turn.
 end)
 
 -- ============================================================
@@ -433,4 +488,4 @@ end)
 -- Send initial lobby state
 broadcastLobbyState()
 
-print("[GameManager] M6 Multiplayer initialized")
+print("[GameManager] M7 Final Stabilization initialized")

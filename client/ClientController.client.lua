@@ -721,12 +721,6 @@ local mapSize = 10
 local cellSize = 50
 
 local function buildMap(data)
-    -- Store previous state for diff comparison
-    local prevData = {}
-    for id, btn in pairs(cellButtons) do
-        prevData[id] = btn:GetAttribute("CellData")
-    end
-
     local newMapSize = math.sqrt(#data)
     local newCellSize = math.clamp(560 / newMapSize, 24, 60)
 
@@ -746,8 +740,6 @@ local function buildMap(data)
 
     for _, cell in ipairs(data) do
         local btn = cellButtons[cell.id]
-        local prevCellJson = prevData[cell.id]
-        local prevCell = prevCellJson and HttpService:JSONDecode(prevCellJson) or nil
 
         if not btn then
             -- Create new button for new cell
@@ -775,7 +767,6 @@ local function buildMap(data)
             cellButtons[cell.id] = btn
             btn:SetAttribute("Owner", cell.owner)
             btn:SetAttribute("TerrainType", cell.terrainType or "Plains")
-            btn:SetAttribute("CellData", HttpService:JSONEncode(cell))
 
             -- Connect events once
             btn.MouseEnter:Connect(function()
@@ -792,28 +783,19 @@ local function buildMap(data)
                 showInspector(cell)
             end)
         else
-            -- Diff-based update: only update changed attributes
-            local changed = false
+            -- Diff-based update: only update changed attributes (no JSON encode/decode)
+            local prevOwner = btn:GetAttribute("Owner")
+            local prevTerrain = btn:GetAttribute("TerrainType")
 
-            if prevCell and prevCell.owner ~= cell.owner then
+            if prevOwner ~= cell.owner then
                 btn.BackgroundColor3 = colorForOwner(cell.owner)
                 btn:SetAttribute("Owner", cell.owner)
-                changed = true
             end
 
-            if prevCell and prevCell.terrainType ~= cell.terrainType then
+            if prevTerrain ~= (cell.terrainType or "Plains") then
                 btn.Text = TERRAIN_SYMBOLS[cell.terrainType] or "?"
                 btn:SetAttribute("TerrainType", cell.terrainType or "Plains")
-                changed = true
             end
-
-            if prevCell and prevCell.color ~= cell.color then
-                btn:SetAttribute("CellData", HttpService:JSONEncode(cell))
-                changed = true
-            end
-
-            -- Update CellData attribute always to keep it fresh
-            btn:SetAttribute("CellData", HttpService:JSONEncode(cell))
         end
     end
 end
@@ -1116,7 +1098,7 @@ local function setupPowerButtons()
         
         btn.MouseButton1Click:Connect(function()
             if isGameActive and currentTeam == myTeam then
-                UsePower:FireServer(power.name)
+                UsePower:FireServer(power.name, nil) -- targetCellId optional for now
             end
         end)
         

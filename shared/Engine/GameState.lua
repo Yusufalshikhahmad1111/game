@@ -1,9 +1,11 @@
 -- shared/Engine/GameState.lua (ModuleScript)
+-- M7: Integrated EventSystem production modifiers into generateTurnResources
 local Board = require(script.Parent.Board)
 local TurnManager = require(script.Parent.TurnManager)
 local ResourceSystem = require(script.Parent.ResourceSystem)
 local WinSystem = require(script.Parent.WinSystem)
 local CaptureSystem = require(script.Parent.CaptureSystem)
+local EventSystem = require(script.Parent.EventSystem)
 
 local GameState = {}
 GameState.__index = GameState
@@ -20,6 +22,8 @@ function GameState.new(MapData, startingGridSize)
     }
     self.gameActive = true
     self.winner = nil
+    -- M7: Match-level progression flag to prevent double counting
+    self.matchRecorded = false
     return self
 end
 
@@ -37,6 +41,7 @@ function GameState:clone()
     end
     clone.gameActive = self.gameActive
     clone.winner = self.winner
+    clone.matchRecorded = self.matchRecorded
     return clone
 end
 
@@ -58,7 +63,10 @@ function GameState:generateTurnResources()
             for y = 1, self.board.gridSize do
                 local cell = self.board:getCell(x, y)
                 if cell and cell.owner == teamName then
-                    for resType, amount in pairs(cell.productionPerTurn) do
+                    for resType, baseAmount in pairs(cell.productionPerTurn) do
+                        -- M7: Apply event-based production modifier
+                        local modifier = EventSystem:getProductionModifier(cell.terrainType, resType)
+                        local amount = baseAmount * modifier
                         production[resType] = (production[resType] or 0) + amount
                     end
                 end
@@ -79,7 +87,7 @@ function GameState:applyCapture(team, chosenColor, captureSystem)
     local capturedCells, gainedResources = captureSystem:capture(self.board, team, chosenColor, self.MapData)
     -- Update resources: add gainedResources (which includes baseYield from capture)
     for resType, amount in pairs(gainedResources) do
-        self.teamResources[team][resType] = self.teamResources[team][resType] + amount
+        self.teamResources[team][resType] = (self.teamResources[team][resType] or 0) + amount
     end
     return #capturedCells, gainedResources
 end
@@ -91,6 +99,14 @@ end
 function GameState:setGameOver(winner)
     self.gameActive = false
     self.winner = winner
+end
+
+function GameState:isMatchRecorded()
+    return self.matchRecorded == true
+end
+
+function GameState:setMatchRecorded(recorded)
+    self.matchRecorded = recorded == true
 end
 
 return GameState

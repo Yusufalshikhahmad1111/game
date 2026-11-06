@@ -1,0 +1,31 @@
+# Island Dominion - .gitignore
+# Security: Never commit credentials or secrets
+
+# Credentials and secrets
+service.json
+*.pem
+*.key
+.env
+.env.local
+*.secret
+*.credential
+
+# Build artifacts
+*.rbxlx
+*.rbxl
+build/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+*.tmp
+*.temp
