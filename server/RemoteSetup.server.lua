@@ -16,7 +16,9 @@ local requiredRemotes = {
     "UpdateMap",
     "GameOver",
     "ResourceUpdate",
-    "VisualEffect"
+    "VisualEffect",
+    "UsePower",
+    "EventNotify"
 }
 
 for _, remoteName in ipairs(requiredRemotes) do

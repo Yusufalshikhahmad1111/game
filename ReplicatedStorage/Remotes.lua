@@ -31,6 +31,15 @@ local visualEffect = Instance.new("RemoteEvent")
 visualEffect.Name = "VisualEffect"
 visualEffect.Parent = folder
 
+-- M5: Powers and Events
+local usePower = Instance.new("RemoteEvent")
+usePower.Name = "UsePower"
+usePower.Parent = folder
+
+local eventNotify = Instance.new("RemoteEvent")
+eventNotify.Name = "EventNotify"
+eventNotify.Parent = folder
+
 -- For future multiplayer
 local playerJoined = Instance.new("RemoteEvent")
 playerJoined.Name = "PlayerJoined"

@@ -44,6 +44,22 @@
             "$className": "ModuleScript",
             "$path": "shared/Engine/ValidationSystem.lua"
           },
+          "PowerSystem": {
+            "$className": "ModuleScript",
+            "$path": "shared/Engine/PowerSystem.lua"
+          },
+          "EventSystem": {
+            "$className": "ModuleScript",
+            "$path": "shared/Engine/EventSystem.lua"
+          },
+          "MatchModifierSystem": {
+            "$className": "ModuleScript",
+            "$path": "shared/Engine/MatchModifierSystem.lua"
+          },
+          "ProgressionSystem": {
+            "$className": "ModuleScript",
+            "$path": "shared/Engine/ProgressionSystem.lua"
+          },
           "AIConfig": {
             "$className": "ModuleScript",
             "$path": "shared/Engine/AIConfig.lua"

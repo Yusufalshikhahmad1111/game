@@ -15,6 +15,8 @@ local UpdateMap = Remotes:WaitForChild("UpdateMap")
 local GameOver = Remotes:WaitForChild("GameOver")
 local ResourceUpdate = Remotes:WaitForChild("ResourceUpdate")
 local VisualEffect = Remotes:WaitForChild("VisualEffect")
+local UsePower = Remotes:WaitForChild("UsePower")
+local EventNotify = Remotes:WaitForChild("EventNotify")
 
 local MapData = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("MapData"))
 
@@ -168,6 +170,81 @@ dominionLabel.TextSize = 16
 dominionLabel.TextXAlignment = Enum.TextXAlignment.Right
 dominionLabel.Parent = dominionContainer
 
+-- Power panel (M5)
+local powerPanel = Instance.new("Frame")
+powerPanel.Name = "PowerPanel"
+powerPanel.Size = UDim2.new(0.33, 0, 1, 0)
+powerPanel.Position = UDim2.new(0, 0, 0, 0)
+powerPanel.BackgroundTransparency = 1
+powerPanel.Parent = topHUD
+
+local powerLabel = Instance.new("TextLabel")
+powerLabel.Name = "PowerLabel"
+powerLabel.Size = UDim2.new(1, -20, 0.5, 0)
+powerLabel.Position = UDim2.new(0, 10, 0, 5)
+powerLabel.BackgroundTransparency = 1
+powerLabel.Text = "القوى: --"
+powerLabel.TextColor3 = THEME.TextSecondary
+powerLabel.Font = Enum.Font.Gotham
+powerLabel.TextSize = 14
+powerLabel.TextXAlignment = Enum.TextXAlignment.Left
+powerLabel.Parent = powerPanel
+
+local powerCooldownLabel = Instance.new("TextLabel")
+powerCooldownLabel.Name = "PowerCooldown"
+powerCooldownLabel.Size = UDim2.new(1, -20, 0.5, 0)
+powerCooldownLabel.Position = UDim2.new(0, 10, 0.5, 0)
+powerCooldownLabel.BackgroundTransparency = 1
+powerCooldownLabel.Text = "التجديد: --"
+powerCooldownLabel.TextColor3 = THEME.Warning
+powerCooldownLabel.Font = Enum.Font.Gotham
+powerCooldownLabel.TextSize = 12
+powerCooldownLabel.TextXAlignment = Enum.TextXAlignment.Left
+powerCooldownLabel.Parent = powerPanel
+
+-- Event notification area
+local eventNotifyFrame = Instance.new("Frame")
+eventNotifyFrame.Name = "EventNotifyFrame"
+eventNotifyFrame.Size = UDim2.new(0, 300, 0, 60)
+eventNotifyFrame.Position = UDim2.new(0.5, -150, 0, 100)
+eventNotifyFrame.BackgroundColor3 = THEME.SurfaceElevated
+eventNotifyFrame.BorderSizePixel = 0
+eventNotifyFrame.Visible = false
+eventNotifyFrame.ZIndex = 20
+eventNotifyFrame.Parent = main
+
+local eventCorner = Instance.new("UICorner")
+eventCorner.CornerRadius = UDim.new(0, 8)
+eventCorner.Parent = eventNotifyFrame
+
+local eventStroke = Instance.new("UIStroke")
+eventStroke.Color = THEME.Accent
+eventStroke.Thickness = 2
+eventStroke.Parent = eventNotifyFrame
+
+local eventIconLabel = Instance.new("TextLabel")
+eventIconLabel.Name = "EventIcon"
+eventIconLabel.Size = UDim2.new(0, 50, 1, 0)
+eventIconLabel.Position = UDim2.new(0, 10, 0, 0)
+eventIconLabel.BackgroundTransparency = 1
+eventIconLabel.Text = "☄️"
+eventIconLabel.TextColor3 = THEME.TextPrimary
+eventIconLabel.Font = Enum.Font.GothamBold
+eventIconLabel.TextSize = 32
+eventIconLabel.Parent = eventNotifyFrame
+
+local eventTextLabel = Instance.new("TextLabel")
+eventTextLabel.Name = "EventText"
+eventTextLabel.Size = UDim2.new(1, -70, 1, 0)
+eventTextLabel.Position = UDim2.new(0, 70, 0, 0)
+eventTextLabel.BackgroundTransparency = 1
+eventTextLabel.Text = "حدث عالمي نشط!"
+eventTextLabel.TextColor3 = THEME.TextPrimary
+eventTextLabel.Font = Enum.Font.GothamBold
+eventTextLabel.TextSize = 18
+eventTextLabel.TextXAlignment = Enum.TextXAlignment.Left
+eventTextLabel.Parent = eventNotifyFrame
+
 -- Center Board Area
 local boardArea = Instance.new("Frame")
 boardArea.Name = "BoardArea"
@@ -290,6 +367,25 @@ colorLayout.FillDirection = Enum.FillDirection.Horizontal
 colorLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 colorLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 colorLayout.Parent = colorFrame
+
+-- Power buttons (M5)
+local powerFrame = Instance.new("Frame")
+powerFrame.Name = "PowerFrame"
+powerFrame.Size = UDim2.new(0, 200, 1, 0)
+powerFrame.Position = UDim2.new(0, 340, 0, 0)
+powerFrame.BackgroundTransparency = 1
+powerFrame.Parent = bottomBar
+
+local powerLayout = Instance.new("UIGridLayout")
+powerLayout.Name = "PowerLayout"
+powerLayout.CellSize = UDim2.new(0, 55, 0, 44)
+powerLayout.CellPadding = UDim2.new(0, 6, 0, 0)
+powerLayout.FillDirection = Enum.FillDirection.Horizontal
+powerLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+powerLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+powerLayout.Parent = powerFrame
+
+local powerButtons = {}
 
 -- Map size selector (bottom right)
 local sizeContainer = Instance.new("Frame")
@@ -687,3 +783,113 @@ local function setupColorButtons(colors)
 end
 
 setupColorButtons(MapData.Colors or {"Red", "Blue", "Green", "Yellow", "Purple", "Orange"})
+
+-- ============================================================
+-- M5: POWER BUTTONS UI
+-- ============================================================
+local function setupPowerButtons()
+    local powers = {
+        {name = "Scout", icon = "🔍"},
+        {name = "Harvest", icon = "🌾"},
+        {name = "Fortify", icon = "🛡️"},
+        {name = "Sabotage", icon = "💣"},
+        {name = "ColorShift", icon = "🎨"},
+        {name = "Shockwave", icon = "💥"}
+    }
+    
+    for _, power in ipairs(powers) do
+        local btn = Instance.new("TextButton")
+        btn.Name = "Power_" .. power.name
+        btn.Text = power.icon
+        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+        btn.TextColor3 = Color3.new(1, 1, 1)
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 20
+        btn.AutoButtonColor = false
+        btn.Parent = powerFrame
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 8)
+        corner.Parent = btn
+        
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Color3.fromRGB(90, 90, 100)
+        stroke.Thickness = 1
+        stroke.Parent = btn
+        
+        btn.MouseEnter:Connect(function()
+            tweenObject(btn, {BackgroundColor3 = Color3.fromRGB(90, 90, 100)}, 0.2)
+        end)
+        btn.MouseLeave:Connect(function()
+            tweenObject(btn, {BackgroundColor3 = Color3.fromRGB(60, 60, 70)}, 0.2)
+        end)
+        
+        btn.MouseButton1Click:Connect(function()
+            UsePower:FireServer(power.name)
+        end)
+        
+        powerButtons[power.name] = btn
+    end
+end
+
+setupPowerButtons()
+
+-- ============================================================
+-- M5: EVENT NOTIFY HANDLER
+-- ============================================================
+EventNotify.OnClientEvent:Connect(function(data)
+    if data.type == "PowerState" then
+        -- Update power button states
+        local cooldowns = data.cooldowns or {}
+        local powers = data.powers or {}
+        
+        for powerName, btn in pairs(powerButtons) do
+            local cd = cooldowns[powerName] or 0
+            local power = powers[powerName]
+            
+            if cd > 0 then
+                btn.BackgroundColor3 = Color3.fromRGB(80, 60, 60)
+                btn.Text = power.icon .. "\n" .. cd
+                btn.TextSize = 14
+                btn.Active = false
+            else
+                btn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+                btn.Text = power.icon
+                btn.TextSize = 20
+                btn.Active = true
+            end
+        end
+        
+        -- Update power label
+        local activeCount = 0
+        for _, cd in pairs(cooldowns) do
+            if cd > 0 then activeCount = activeCount + 1 end
+        end
+        powerLabel.Text = "القوى: " .. (6 - activeCount) .. "/6 متاحة"
+        powerCooldownLabel.Text = "التجديد: " .. activeCount .. " قوة في التبريد"
+        
+    elseif data.type == "Events" then
+        local active = data.active or {}
+        if #active > 0 then
+            local ev = active[1]
+            eventIconLabel.Text = ev.icon or "⚡"
+            eventTextLabel.Text = ev.nameAr or ev.name .. " (" .. ev.turnsRemaining .. " أدوار)"
+            eventNotifyFrame.Visible = true
+            tweenObject(eventNotifyFrame, {BackgroundTransparency = 0}, 0.3)
+            tweenObject(eventIconLabel, {TextTransparency = 0}, 0.3)
+            tweenObject(eventTextLabel, {TextTransparency = 0}, 0.3)
+            
+            task.delay(4, function()
+                tweenObject(eventNotifyFrame, {BackgroundTransparency = 1}, 0.3)
+                tweenObject(eventIconLabel, {TextTransparency = 1}, 0.3)
+                tweenObject(eventTextLabel, {TextTransparency = 1}, 0.3)
+                task.wait(0.3)
+                eventNotifyFrame.Visible = false
+            end)
+        end
+    end
+end)
+
+-- Initial power state request (will be updated by server broadcast)
+powerLabel.Text = "القوى: 6/6 متاحة"
+powerCooldownLabel.Text = "التجديد: 0 قوة في التبريد"
