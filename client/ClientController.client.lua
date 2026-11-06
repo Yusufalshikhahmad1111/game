@@ -952,6 +952,17 @@ EventNotify.OnClientEvent:Connect(function(data)
         powerLabel.Text = "القوى: " .. (6 - activeCount) .. "/6 متاحة"
         powerCooldownLabel.Text = "التجديد: " .. activeCount .. " قوة في التبريد"
         
+        -- Show active team effects briefly
+        local teamEffects = data.teamEffects or {}
+        local myEffects = teamEffects[myTeam] or {}
+        if #myEffects > 0 then
+            local effectNames = {}
+            for _, eff in ipairs(myEffects) do
+                table.insert(effectNames, eff.power .. "(" .. eff.turnsRemaining .. ")")
+            end
+            powerCooldownLabel.Text = "تأثيرات نشطة: " .. table.concat(effectNames, ", ")
+        end
+        
     elseif data.type == "Events" then
         local active = data.active or {}
         if #active > 0 then
