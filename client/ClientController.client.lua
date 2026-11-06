@@ -715,65 +715,106 @@ local function updateLobbyUI(data)
 end
 
 -- ============================================================
--- MAP BUILDING
+-- MAP BUILDING / DIFF-BASED UPDATES (M7 Performance)
 -- ============================================================
+local mapSize = 10
+local cellSize = 50
+
 local function buildMap(data)
-    for _, b in pairs(cellButtons) do
-        b:Destroy()
+    -- Store previous state for diff comparison
+    local prevData = {}
+    for id, btn in pairs(cellButtons) do
+        prevData[id] = btn:GetAttribute("CellData")
     end
-    cellButtons = {}
-    
-    local mapSize = math.sqrt(#data)
-    local cellSize = math.clamp(560 / mapSize, 24, 60)
-    gridLayout.CellSize = UDim2.new(0, cellSize, 0, cellSize)
-    
-    local totalGridSize = cellSize * mapSize + 2 * (mapSize - 1)
-    gridContainer.Size = UDim2.new(0, totalGridSize, 0, totalGridSize)
-    gridContainer.Position = UDim2.new(0.5, -totalGridSize / 2, 0.5, -totalGridSize / 2)
-    
+
+    local newMapSize = math.sqrt(#data)
+    local newCellSize = math.clamp(560 / newMapSize, 24, 60)
+
+    -- Only resize grid if map size changed
+    if newMapSize ~= mapSize then
+        mapSize = newMapSize
+        cellSize = newCellSize
+        gridLayout.CellSize = UDim2.new(0, cellSize, 0, cellSize)
+
+        local totalGridSize = cellSize * mapSize + 2 * (mapSize - 1)
+        gridContainer.Size = UDim2.new(0, totalGridSize, 0, totalGridSize)
+        gridContainer.Position = UDim2.new(0.5, -totalGridSize / 2, 0.5, -totalGridSize / 2)
+    end
+
     local dominionPct = getDominionPercentage(data)
     dominionLabel.Text = "السيطرة: " .. dominionPct .. "%"
-    
+
     for _, cell in ipairs(data) do
-        local btn = Instance.new("TextButton")
-        btn.Name = cell.id
-        btn.Size = UDim2.new(0, cellSize, 0, cellSize)
-        btn.BackgroundColor3 = colorForOwner(cell.owner)
-        btn.BorderSizePixel = 0
-        btn.AutoButtonColor = false
-        btn.Font = Enum.Font.GothamBold
-        btn.TextSize = math.clamp(14, 10, 18)
-        btn.Text = TERRAIN_SYMBOLS[cell.terrainType] or "?"
-        btn.TextColor3 = Color3.new(1, 1, 1)
-        btn.Parent = gridContainer
-        
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 6)
-        corner.Parent = btn
-        
-        local stroke = Instance.new("UIStroke")
-        stroke.Color = THEME.Border
-        stroke.Thickness = 1
-        stroke.Parent = btn
-        
-        cellButtons[cell.id] = btn
-        btn:SetAttribute("Owner", cell.owner)
-        btn:SetAttribute("TerrainType", cell.terrainType or "Plains")
-        btn:SetAttribute("CellData", HttpService:JSONEncode(cell))
-        
-        btn.MouseEnter:Connect(function()
-            if btn:GetAttribute("Owner") ~= myTeam then
-                tweenObject(btn, {BackgroundColor3 = colorForOwner(cell.owner):Lerp(Color3.new(1,1,1), 0.3)}, 0.2)
+        local btn = cellButtons[cell.id]
+        local prevCellJson = prevData[cell.id]
+        local prevCell = prevCellJson and HttpService:JSONDecode(prevCellJson) or nil
+
+        if not btn then
+            -- Create new button for new cell
+            btn = Instance.new("TextButton")
+            btn.Name = cell.id
+            btn.Size = UDim2.new(0, cellSize, 0, cellSize)
+            btn.BackgroundColor3 = colorForOwner(cell.owner)
+            btn.BorderSizePixel = 0
+            btn.AutoButtonColor = false
+            btn.Font = Enum.Font.GothamBold
+            btn.TextSize = math.clamp(14, 10, 18)
+            btn.Text = TERRAIN_SYMBOLS[cell.terrainType] or "?"
+            btn.TextColor3 = Color3.new(1, 1, 1)
+            btn.Parent = gridContainer
+
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0, 6)
+            corner.Parent = btn
+
+            local stroke = Instance.new("UIStroke")
+            stroke.Color = THEME.Border
+            stroke.Thickness = 1
+            stroke.Parent = btn
+
+            cellButtons[cell.id] = btn
+            btn:SetAttribute("Owner", cell.owner)
+            btn:SetAttribute("TerrainType", cell.terrainType or "Plains")
+            btn:SetAttribute("CellData", HttpService:JSONEncode(cell))
+
+            -- Connect events once
+            btn.MouseEnter:Connect(function()
+                if btn:GetAttribute("Owner") ~= myTeam then
+                    tweenObject(btn, {BackgroundColor3 = colorForOwner(cell.owner):Lerp(Color3.new(1,1,1), 0.3)}, 0.2)
+                end
+            end)
+
+            btn.MouseLeave:Connect(function()
+                tweenObject(btn, {BackgroundColor3 = colorForOwner(cell.owner)}, 0.2)
+            end)
+
+            btn.MouseButton1Click:Connect(function()
+                showInspector(cell)
+            end)
+        else
+            -- Diff-based update: only update changed attributes
+            local changed = false
+
+            if prevCell and prevCell.owner ~= cell.owner then
+                btn.BackgroundColor3 = colorForOwner(cell.owner)
+                btn:SetAttribute("Owner", cell.owner)
+                changed = true
             end
-        end)
-        
-        btn.MouseLeave:Connect(function()
-            tweenObject(btn, {BackgroundColor3 = colorForOwner(cell.owner)}, 0.2)
-        end)
-        
-        btn.MouseButton1Click:Connect(function()
-            showInspector(cell)
-        end)
+
+            if prevCell and prevCell.terrainType ~= cell.terrainType then
+                btn.Text = TERRAIN_SYMBOLS[cell.terrainType] or "?"
+                btn:SetAttribute("TerrainType", cell.terrainType or "Plains")
+                changed = true
+            end
+
+            if prevCell and prevCell.color ~= cell.color then
+                btn:SetAttribute("CellData", HttpService:JSONEncode(cell))
+                changed = true
+            end
+
+            -- Update CellData attribute always to keep it fresh
+            btn:SetAttribute("CellData", HttpService:JSONEncode(cell))
+        end
     end
 end
 
@@ -1110,3 +1151,89 @@ JoinLobby:FireServer()
 
 -- Close inspector
 closeInspector.MouseButton1Click:Connect(hideInspector)
+
+-- ============================================================
+-- M7: AUDIO / FEEDBACK SYSTEM (Placeholders)
+-- ============================================================
+local SoundService = game:GetService("SoundService")
+
+local AudioConfig = {
+    Click = {id = "rbxassetid://0", volume = 0.5},        -- Placeholder - replace with real asset
+    Capture = {id = "rbxassetid://0", volume = 0.6},
+    TurnStart = {id = "rbxassetid://0", volume = 0.4},
+    TurnEnd = {id = "rbxassetid://0", volume = 0.4},
+    PowerUse = {id = "rbxassetid://0", volume = 0.5},
+    EventStart = {id = "rbxassetid://0", volume = 0.6},
+    Win = {id = "rbxassetid://0", volume = 0.7},
+    Lose = {id = "rbxassetid://0", volume = 0.5},
+    Hover = {id = "rbxassetid://0", volume = 0.2}
+}
+
+local function playSound(soundName)
+    local config = AudioConfig[soundName]
+    if not config or not config.id or config.id == "rbxassetid://0" then
+        return -- No asset configured, skip silently
+    end
+    
+    local sound = Instance.new("Sound")
+    sound.SoundId = config.id
+    sound.Volume = config.volume
+    sound.Parent = SoundService
+    sound:Play()
+    
+    sound.Ended:Connect(function()
+        sound:Destroy()
+    end)
+end
+
+-- Bind sounds to UI events
+for _, btn in ipairs(colorFrame:GetChildren()) do
+    if btn:IsA("TextButton") then
+        btn.MouseButton1Click:Connect(function()
+            playSound("Click")
+        end)
+    end
+end
+
+for _, btn in ipairs(powerFrame:GetChildren()) do
+    if btn:IsA("TextButton") then
+        btn.MouseButton1Click:Connect(function()
+            playSound("PowerUse")
+        end)
+    end
+end
+
+readyButton.MouseButton1Click:Connect(function()
+    playSound("Click")
+end)
+
+startButton.MouseButton1Click:Connect(function()
+    playSound("Click")
+end)
+
+-- Game event sounds
+VisualEffect.OnClientEvent:Connect(function(cellIds, colorName)
+    if #cellIds > 0 then
+        playSound("Capture")
+    end
+end)
+
+GameOver.OnClientEvent:Connect(function(winner)
+    if winner == myTeam then
+        playSound("Win")
+    else
+        playSound("Lose")
+    end
+end)
+
+UpdateMap.OnClientEvent:Connect(function(data, currentTeam, active)
+    if active and currentTeam == myTeam then
+        playSound("TurnStart")
+    end
+end)
+
+EventNotify.OnClientEvent:Connect(function(data)
+    if data.type == "Events" and #data.active > 0 then
+        playSound("EventStart")
+    end
+end)

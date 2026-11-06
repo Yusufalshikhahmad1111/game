@@ -89,6 +89,16 @@
         "$path": "server/GameManager.server.lua"
       }
     },
+    "ServerStorage": {
+      "$className": "ServerStorage",
+      "Tests": {
+        "$className": "Folder",
+        "CoreTests": {
+          "$className": "ModuleScript",
+          "$path": "tests/CoreTests.lua"
+        }
+      }
+    },
     "StarterPlayer": {
       "$className": "StarterPlayer",
       "StarterPlayerScripts": {
