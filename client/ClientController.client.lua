@@ -1,6 +1,11 @@
 -- StarterPlayer/StarterPlayerScripts/ClientController.client.lua (LocalScript)
+-- M4: Premium UI/UX + Game Feel
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+
 local player = Players.LocalPlayer
 
 local Remotes = ReplicatedStorage:WaitForChild("GameRemotes")
@@ -12,208 +17,517 @@ local ResourceUpdate = Remotes:WaitForChild("ResourceUpdate")
 local VisualEffect = Remotes:WaitForChild("VisualEffect")
 
 local MapData = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("MapData"))
-local HttpService = game:GetService("HttpService")
 
--- Terrain type display abbreviations and colors
-local TerrainDisplay = {
-    Plains = {symbol = "P", color = Color3.fromRGB(34, 139, 34)},
-    Forest = {symbol = "F", color = Color3.fromRGB(0, 100, 0)},
-    Mine   = {symbol = "M", color = Color3.fromRGB(169, 169, 169)},
-    Ruins  = {symbol = "R", color = Color3.fromRGB(139, 69, 19)},
-    Fortress = {symbol = "F", color = Color3.fromRGB(128, 0, 128)},
-    Capital = {symbol = "C", color = Color3.fromRGB(255, 215, 0)},
-    Harbor = {symbol = "H", color = Color3.fromRGB(0, 191, 255)}
+-- ============================================================
+-- CONFIGURATION & THEME
+-- ============================================================
+local THEME = {
+    Background = Color3.fromRGB(18, 18, 22),
+    Surface = Color3.fromRGB(28, 28, 34),
+    SurfaceElevated = Color3.fromRGB(38, 38, 46),
+    Border = Color3.fromRGB(60, 60, 70),
+    TextPrimary = Color3.new(1, 1, 1),
+    TextSecondary = Color3.fromRGB(200, 200, 200),
+    Accent = Color3.fromRGB(0, 170, 255),
+    Success = Color3.fromRGB(0, 255, 120),
+    Warning = Color3.fromRGB(255, 180, 0),
+    Danger = Color3.fromRGB(255, 60, 60),
+    Neutral = Color3.fromRGB(120, 120, 120)
 }
 
--- GUI
+local TEAM_COLORS = {
+    Player = Color3.fromRGB(0, 120, 255),
+    AI1 = Color3.fromRGB(255, 50, 50),
+    AI2 = Color3.fromRGB(50, 255, 50),
+    Neutral = Color3.fromRGB(100, 100, 100)
+}
+
+local TERRAIN_SYMBOLS = {
+    Plains = "🌾",
+    Forest = "🌲",
+    Mine = "⛏️",
+    Ruins = "🏛️",
+    Fortress = "🏰",
+    Capital = "🏛️",
+    Harbor = "⚓"
+}
+
+local TERRAIN_NAMES_AR = {
+    Plains = "سهل",
+    Forest = "غابة",
+    Mine = "منجم",
+    Ruins = "آثار",
+    Fortress = "حصن",
+    Capital = "عاصمة",
+    Harbor = "ميناء"
+}
+
+-- ============================================================
+-- GUI CONSTRUCTION
+-- ============================================================
 local gui = Instance.new("ScreenGui")
 gui.Name = "StrategyGameGUI"
 gui.ResetOnSpawn = false
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = player:WaitForChild("PlayerGui")
 
+-- Main container
 local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 640, 0, 820)
-main.Position = UDim2.new(0.5, -320, 0.5, -410)
-main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+main.Name = "Main"
+main.Size = UDim2.new(1, 0, 1, 0)
+main.Position = UDim2.new(0, 0, 0, 0)
+main.BackgroundColor3 = THEME.Background
 main.BorderSizePixel = 0
 main.Parent = gui
 
--- Title
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 40)
-title.BackgroundTransparency = 1
-title.Text = "Island Dominion - استراتيجية الأراضي"
-title.TextColor3 = Color3.new(1, 1, 1)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 20
-title.Parent = main
+-- Top HUD
+local topHUD = Instance.new("Frame")
+topHUD.Name = "TopHUD"
+topHUD.Size = UDim2.new(1, 0, 0, 80)
+topHUD.Position = UDim2.new(0, 0, 0, 0)
+topHUD.BackgroundColor3 = THEME.Surface
+topHUD.BorderSizePixel = 0
+topHUD.Parent = main
 
--- Turn & Resources display
-local infoFrame = Instance.new("Frame")
-infoFrame.Size = UDim2.new(1, -20, 0, 70)
-infoFrame.Position = UDim2.new(0, 10, 0, 50)
-infoFrame.BackgroundTransparency = 1
-infoFrame.Parent = main
+local topHUDLine = Instance.new("Frame")
+topHUDLine.Size = UDim2.new(1, 0, 0, 2)
+topHUDLine.Position = UDim2.new(0, 0, 1, -2)
+topHUDLine.BackgroundColor3 = THEME.Accent
+topHUDLine.BorderSizePixel = 0
+topHUDLine.Parent = topHUD
+
+-- Turn indicator
+local turnContainer = Instance.new("Frame")
+turnContainer.Name = "TurnContainer"
+turnContainer.Size = UDim2.new(0.33, 0, 1, 0)
+turnContainer.Position = UDim2.new(0, 0, 0, 0)
+turnContainer.BackgroundTransparency = 1
+turnContainer.Parent = topHUD
 
 local turnLabel = Instance.new("TextLabel")
-turnLabel.Size = UDim2.new(0.5, 0, 1, 0)
+turnLabel.Name = "TurnLabel"
+turnLabel.Size = UDim2.new(1, -40, 1, 0)
+turnLabel.Position = UDim2.new(0, 20, 0, 0)
 turnLabel.BackgroundTransparency = 1
-turnLabel.TextColor3 = Color3.new(1, 1, 0)
-turnLabel.Font = Enum.Font.Gotham
-turnLabel.TextSize = 16
 turnLabel.Text = "الدور: لاعب"
-turnLabel.Parent = infoFrame
+turnLabel.TextColor3 = THEME.TextPrimary
+turnLabel.Font = Enum.Font.GothamBold
+turnLabel.TextSize = 18
+turnLabel.TextXAlignment = Enum.TextXAlignment.Left
+turnLabel.Parent = turnContainer
+
+local turnBadge = Instance.new("TextLabel")
+turnBadge.Name = "TurnBadge"
+turnBadge.Size = UDim2.new(0, 30, 0, 30)
+turnBadge.Position = UDim2.new(1, -40, 0.5, -15)
+turnBadge.BackgroundColor3 = THEME.Success
+turnBadge.BorderSizePixel = 0
+turnBadge.Text = "P"
+turnBadge.TextColor3 = Color3.new(1, 1, 1)
+turnBadge.Font = Enum.Font.GothamBold
+turnBadge.TextSize = 16
+turnBadge.Parent = turnContainer
+
+-- Resources bar
+local resourcesContainer = Instance.new("Frame")
+resourcesContainer.Name = "ResourcesContainer"
+resourcesContainer.Size = UDim2.new(0.34, 0, 1, 0)
+resourcesContainer.Position = UDim2.new(0.33, 0, 0, 0)
+resourcesContainer.BackgroundTransparency = 1
+resourcesContainer.Parent = topHUD
 
 local resourceLabel = Instance.new("TextLabel")
-resourceLabel.Size = UDim2.new(0.5, 0, 1, 0)
-resourceLabel.Position = UDim2.new(0.5, 0, 0, 0)
+resourceLabel.Name = "ResourceLabel"
+resourceLabel.Size = UDim2.new(1, -20, 1, 0)
+resourceLabel.Position = UDim2.new(0, 10, 0, 0)
 resourceLabel.BackgroundTransparency = 1
-resourceLabel.TextColor3 = Color3.new(1, 1, 0)
+resourceLabel.Text = "🪙 0 | 🍖 0 | 🪵 0 | 🔮 0"
+resourceLabel.TextColor3 = THEME.TextSecondary
 resourceLabel.Font = Enum.Font.Gotham
 resourceLabel.TextSize = 16
-resourceLabel.Text = "الموارد: Gold 0 | Food 0 | Wood 0 | Relic 0"
-resourceLabel.Parent = infoFrame
+resourceLabel.TextXAlignment = Enum.TextXAlignment.Center
+resourceLabel.Parent = resourcesContainer
 
--- Map size selector
-local sizeFrame = Instance.new("Frame")
-sizeFrame.Size = UDim2.new(1, -20, 0, 40)
-sizeFrame.Position = UDim2.new(0, 10, 0, 130)
-sizeFrame.BackgroundTransparency = 1
-sizeFrame.Parent = main
+-- Dominion % (center-right)
+local dominionContainer = Instance.new("Frame")
+dominionContainer.Name = "DominionContainer"
+dominionContainer.Size = UDim2.new(0.33, 0, 1, 0)
+dominionContainer.Position = UDim2.new(0.67, 0, 0, 0)
+dominionContainer.BackgroundTransparency = 1
+dominionContainer.Parent = topHUD
 
-local sizeLabel = Instance.new("TextLabel")
-sizeLabel.Size = UDim2.new(0, 100, 1, 0)
-sizeLabel.BackgroundTransparency = 1
-sizeLabel.Text = "حجم الخريطة:"
-sizeLabel.TextColor3 = Color3.new(1, 1, 1)
-sizeLabel.Font = Enum.Font.Gotham
-sizeLabel.TextSize = 16
-sizeLabel.Parent = sizeFrame
+local dominionLabel = Instance.new("TextLabel")
+dominionLabel.Name = "DominionLabel"
+dominionLabel.Size = UDim2.new(1, -20, 1, 0)
+dominionLabel.Position = UDim2.new(0, 10, 0, 0)
+dominionLabel.BackgroundTransparency = 1
+dominionLabel.Text = "السيطرة: 0%"
+dominionLabel.TextColor3 = THEME.TextPrimary
+dominionLabel.Font = Enum.Font.GothamBold
+dominionLabel.TextSize = 16
+dominionLabel.TextXAlignment = Enum.TextXAlignment.Right
+dominionLabel.Parent = dominionContainer
 
-local function makeSizeButton(text, sizeValue)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 80, 1, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 14
-    btn.Text = text
-    btn.MouseButton1Click:Connect(function()
-        SetMapSize:FireServer(sizeValue)
-    end)
-    return btn
-end
+-- Center Board Area
+local boardArea = Instance.new("Frame")
+boardArea.Name = "BoardArea"
+boardArea.Size = UDim2.new(1, 0, 1, -140)
+boardArea.Position = UDim2.new(0, 0, 0, 90)
+boardArea.BackgroundTransparency = 1
+boardArea.Parent = main
 
-for _, sz in ipairs(MapData.AvailableSizes) do
-    local btn = makeSizeButton(tostring(sz) .. "x" .. tostring(sz), sz)
-    btn.Parent = sizeFrame
-end
-
-local sizeLayout = Instance.new("UIListLayout")
-sizeLayout.FillDirection = Enum.FillDirection.Horizontal
-sizeLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-sizeLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-sizeLayout.Padding = UDim2.new(0, 8, 0, 0)
-sizeLayout.Parent = sizeFrame
-
--- Grid container
 local gridContainer = Instance.new("Frame")
-gridContainer.Size = UDim2.new(1, -20, 0, 520)
-gridContainer.Position = UDim2.new(0, 10, 0, 180)
+gridContainer.Name = "GridContainer"
+gridContainer.Size = UDim2.new(0, 600, 0, 600)
+gridContainer.Position = UDim2.new(0.5, -300, 0.5, -300)
 gridContainer.BackgroundTransparency = 1
-gridContainer.Parent = main
+gridContainer.Parent = boardArea
 
 local gridLayout = Instance.new("UIGridLayout")
+gridLayout.Name = "GridLayout"
 gridLayout.CellSize = UDim2.new(0, 50, 0, 50)
 gridLayout.CellPadding = UDim2.new(0, 2, 0, 2)
 gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
 gridLayout.Parent = gridContainer
 
--- Color selection
+-- Side Inspector Panel (hidden by default)
+local inspector = Instance.new("Frame")
+inspector.Name = "Inspector"
+inspector.Size = UDim2.new(0, 300, 1, -90)
+inspector.Position = UDim2.new(1, 0, 0, 90)
+inspector.BackgroundColor3 = THEME.SurfaceElevated
+inspector.BorderSizePixel = 0
+inspector.Visible = false
+inspector.Parent = main
+
+local inspectorLine = Instance.new("Frame")
+inspectorLine.Size = UDim2.new(0, 2, 1, 0)
+inspectorLine.Position = UDim2.new(0, 0, 0, 0)
+inspectorLine.BackgroundColor3 = THEME.Accent
+inspectorLine.BorderSizePixel = 0
+inspectorLine.Parent = inspector
+
+local inspectorTitle = Instance.new("TextLabel")
+inspectorTitle.Name = "Title"
+inspectorTitle.Size = UDim2.new(1, -20, 0, 40)
+inspectorTitle.Position = UDim2.new(0, 10, 0, 10)
+inspectorTitle.BackgroundTransparency = 1
+inspectorTitle.Text = "تفاصيل الخلية"
+inspectorTitle.TextColor3 = THEME.TextPrimary
+inspectorTitle.Font = Enum.Font.GothamBold
+inspectorTitle.TextSize = 18
+inspectorTitle.TextXAlignment = Enum.TextXAlignment.Left
+inspectorTitle.Parent = inspector
+
+local inspectorContent = Instance.new("ScrollingFrame")
+inspectorContent.Name = "Content"
+inspectorContent.Size = UDim2.new(1, -20, 1, -60)
+inspectorContent.Position = UDim2.new(0, 10, 0, 55)
+inspectorContent.BackgroundTransparency = 1
+inspectorContent.BorderSizePixel = 0
+inspectorContent.ScrollBarThickness = 4
+inspectorContent.AutomaticCanvasSize = Enum.AutomaticSize.Y
+inspectorContent.Parent = inspector
+
+local inspectorList = Instance.new("UIListLayout")
+inspectorList.Name = "ListLayout"
+inspectorList.Padding = UDim2.new(0, 0, 0, 8)
+inspectorList.SortOrder = Enum.SortOrder.LayoutOrder
+inspectorList.Parent = inspectorContent
+
+local closeInspector = Instance.new("TextButton")
+closeInspector.Name = "Close"
+closeInspector.Size = UDim2.new(0, 30, 0, 30)
+closeInspector.Position = UDim2.new(1, -40, 0, 10)
+closeInspector.BackgroundColor3 = THEME.Danger
+closeInspector.BorderSizePixel = 0
+closeInspector.Text = "✕"
+closeInspector.TextColor3 = Color3.new(1, 1, 1)
+closeInspector.Font = Enum.Font.GothamBold
+closeInspector.TextSize = 18
+closeInspector.Parent = inspector
+
+-- Bottom Action Bar
+local bottomBar = Instance.new("Frame")
+bottomBar.Name = "BottomBar"
+bottomBar.Size = UDim2.new(1, 0, 0, 50)
+bottomBar.Position = UDim2.new(0, 0, 1, -50)
+bottomBar.BackgroundColor3 = THEME.Surface
+bottomBar.BorderSizePixel = 0
+bottomBar.Parent = main
+
+local bottomBarLine = Instance.new("Frame")
+bottomBarLine.Size = UDim2.new(1, 0, 0, 2)
+bottomBarLine.Position = UDim2.new(0, 0, 0, 0)
+bottomBarLine.BackgroundColor3 = THEME.Accent
+bottomBarLine.BorderSizePixel = 0
+bottomBarLine.Parent = bottomBar
+
+local colorLabel = Instance.new("TextLabel")
+colorLabel.Name = "ColorLabel"
+colorLabel.Size = UDim2.new(0, 100, 1, 0)
+colorLabel.Position = UDim2.new(0, 10, 0, 0)
+colorLabel.BackgroundTransparency = 1
+colorLabel.Text = "اختر لون:"
+colorLabel.TextColor3 = THEME.TextSecondary
+colorLabel.Font = Enum.Font.GothamBold
+colorLabel.TextSize = 14
+colorLabel.TextXAlignment = Enum.TextXAlignment.Left
+colorLabel.Parent = bottomBar
+
 local colorFrame = Instance.new("Frame")
-colorFrame.Size = UDim2.new(1, -20, 0, 60)
-colorFrame.Position = UDim2.new(0, 10, 0, 720)
+colorFrame.Name = "ColorFrame"
+colorFrame.Size = UDim2.new(1, -220, 1, 0)
+colorFrame.Position = UDim2.new(0, 120, 0, 0)
 colorFrame.BackgroundTransparency = 1
-colorFrame.Parent = main
+colorFrame.Parent = bottomBar
 
 local colorLayout = Instance.new("UIGridLayout")
-colorLayout.CellSize = UDim2.new(0, 100, 0, 44)
-colorLayout.CellPadding = UDim2.new(0, 5, 0, 5)
+colorLayout.Name = "ColorLayout"
+colorLayout.CellSize = UDim2.new(0, 60, 0, 44)
+colorLayout.CellPadding = UDim2.new(0, 8, 0, 0)
+colorLayout.FillDirection = Enum.FillDirection.Horizontal
+colorLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+colorLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 colorLayout.Parent = colorFrame
 
+-- Map size selector (bottom right)
+local sizeContainer = Instance.new("Frame")
+sizeContainer.Name = "SizeContainer"
+sizeContainer.Size = UDim2.new(0, 100, 1, 0)
+sizeContainer.Position = UDim2.new(1, -100, 0, 0)
+sizeContainer.BackgroundTransparency = 1
+sizeContainer.Parent = bottomBar
+
+local sizeLabel = Instance.new("TextLabel")
+sizeLabel.Name = "SizeLabel"
+sizeLabel.Size = UDim2.new(1, -30, 0, 20)
+sizeLabel.Position = UDim2.new(0, 0, 0, 2)
+sizeLabel.BackgroundTransparency = 1
+sizeLabel.Text = "الحجم:"
+sizeLabel.TextColor3 = THEME.TextSecondary
+sizeLabel.Font = Enum.Font.Gotham
+sizeLabel.TextSize = 12
+sizeLabel.TextXAlignment = Enum.TextXAlignment.Right
+sizeLabel.Parent = sizeContainer
+
+local sizeButtonsFrame = Instance.new("Frame")
+sizeButtonsFrame.Name = "SizeButtons"
+sizeButtonsFrame.Size = UDim2.new(1, 0, 0, 24)
+sizeButtonsFrame.Position = UDim2.new(0, 0, 0, 26)
+sizeButtonsFrame.BackgroundTransparency = 1
+sizeButtonsFrame.Parent = sizeContainer
+
+local sizeLayout = Instance.new("UIListLayout")
+sizeLayout.FillDirection = Enum.FillDirection.Horizontal
+sizeLayout.Padding = UDim2.new(0, 4, 0, 0)
+sizeLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+sizeLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+sizeLayout.Parent = sizeButtonsFrame
+
+-- ============================================================
+-- STATE
+-- ============================================================
 local cellButtons = {}
+local selectedCellId = nil
+local isGameActive = true
+local currentTeam = "Player"
 
+-- ============================================================
+-- HELPER FUNCTIONS
+-- ============================================================
 local function colorForOwner(owner)
-    return {
-        Player = Color3.fromRGB(0, 120, 255),
-        AI1 = Color3.fromRGB(255, 50, 50),
-        AI2 = Color3.fromRGB(50, 255, 50),
-        Neutral = Color3.fromRGB(100, 100, 100)
-    }[owner] or Color3.new(1, 1, 1)
+    return TEAM_COLORS[owner] or THEME.Neutral
 end
 
-local function terrainSymbol(terrainType)
-    return TerrainDisplay[terrainType] and TerrainDisplay[terrainType].symbol or "?"
+local function getDominionPercentage(data)
+    local playerCount = 0
+    local total = #data
+    for _, cell in ipairs(data) do
+        if cell.owner == "Player" then
+            playerCount = playerCount + 1
+        end
+    end
+    return math.floor((playerCount / total) * 100)
 end
 
+local function tweenObject(obj, props, duration, easingStyle, easingDir)
+    duration = duration or 0.3
+    easingStyle = easingStyle or Enum.EasingStyle.Quad
+    easingDir = easingDir or Enum.EasingDirection.Out
+    local tween = TweenService:Create(obj, TweenInfo.new(duration, easingStyle, easingDir), props)
+    tween:Play()
+    return tween
+end
+
+local function showInspector(cellData)
+    if not cellData then return end
+    selectedCellId = cellData.id
+    
+    local owner = cellData.owner or "Neutral"
+    local terrainType = cellData.terrainType or "Plains"
+    local terrainName = TERRAIN_NAMES_AR[terrainType] or terrainType
+    local symbol = TERRAIN_SYMBOLS[terrainType] or "?"
+    
+    -- Update title
+    inspectorTitle.Text = symbol .. " " .. terrainName
+    
+    -- Clear content
+    for _, child in ipairs(inspectorContent:GetChildren()) do
+        if child:IsA("TextLabel") or child:IsA("Frame") then
+            child:Destroy()
+        end
+    end
+    
+    local function addRow(labelText, valueText, valueColor)
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, 0, 0, 24)
+        row.BackgroundTransparency = 1
+        row.Parent = inspectorContent
+        
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(0.5, 0, 1, 0)
+        lbl.BackgroundTransparency = 1
+        lbl.Text = labelText
+        lbl.TextColor3 = THEME.TextSecondary
+        lbl.Font = Enum.Font.Gotham
+        lbl.TextSize = 14
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.Parent = row
+        
+        local val = Instance.new("TextLabel")
+        val.Size = UDim2.new(0.5, 0, 1, 0)
+        val.Position = UDim2.new(0.5, 0, 0, 0)
+        val.BackgroundTransparency = 1
+        val.Text = valueText
+        val.TextColor3 = valueColor or THEME.TextPrimary
+        val.Font = Enum.Font.GothamBold
+        val.TextSize = 14
+        val.TextXAlignment = Enum.TextXAlignment.Right
+        val.Parent = row
+    end
+    
+    addRow("المالك:", owner, colorForOwner(owner))
+    addRow("نوع الأرضية:", terrainName, THEME.Accent)
+    addRow("القيمة الاستراتيجية:", tostring(cellData.strategicValue or 1), THEME.TextPrimary)
+    
+    local defPct = math.floor((cellData.defenseModifier or 0) * 100)
+    addRow("معدل الدفاع:", defPct .. "%", defPct > 0 and THEME.Success or THEME.TextSecondary)
+    
+    -- Production
+    local prod = cellData.productionPerTurn or {}
+    local prodStr = ""
+    for resType, amount in pairs(prod) do
+        if prodStr ~= "" then prodStr = prodStr .. " | " end
+        local resIcon = {Gold = "🪙", Food = "🍖", Wood = "🪵", Relic = "🔮"}[resType] or ""
+        prodStr = prodStr .. resIcon .. resType .. " +" .. amount
+    end
+    if prodStr ~= "" then
+        addRow("الإنتاج لكل دور:", prodStr, THEME.Success)
+    end
+    
+    -- Base yield
+    local yield = cellData.baseYield or {}
+    local yieldStr = ""
+    for resType, amount in pairs(yield) do
+        if yieldStr ~= "" then yieldStr = yieldStr .. " | " end
+        local resIcon = {Gold = "🪙", Food = "🍖", Wood = "🪵", Relic = "🔮"}[resType] or ""
+        yieldStr = yieldStr .. resIcon .. resType .. " +" .. amount
+    end
+    if yieldStr ~= "" then
+        addRow("المكافأة عند الاحتجاز:", yieldStr, THEME.Warning)
+    end
+    
+    -- Show inspector with animation
+    inspector.Visible = true
+    tweenObject(inspector, {Position = UDim2.new(1, -300, 0, 90)}, 0.3)
+end
+
+local function hideInspector()
+    if not selectedCellId then return end
+    tweenObject(inspector, {Position = UDim2.new(1, 0, 0, 90)}, 0.3)
+    task.delay(0.3, function()
+        if inspector and inspector.Position == UDim2.new(1, 0, 0, 90) then
+            inspector.Visible = false
+        end
+    end)
+    selectedCellId = nil
+end
+
+-- ============================================================
+-- MAP BUILDING
+-- ============================================================
 local function buildMap(data)
-    for _, b in pairs(cellButtons) do b:Destroy() end
+    -- Clear existing
+    for _, b in pairs(cellButtons) do
+        b:Destroy()
+    end
     cellButtons = {}
-
+    
     local mapSize = math.sqrt(#data)
-    local cellSize = math.clamp(600 / mapSize, 30, 80)
+    local cellSize = math.clamp(560 / mapSize, 24, 60)
     gridLayout.CellSize = UDim2.new(0, cellSize, 0, cellSize)
-
+    
+    -- Center the grid
+    local totalGridSize = cellSize * mapSize + 2 * (mapSize - 1)
+    gridContainer.Size = UDim2.new(0, totalGridSize, 0, totalGridSize)
+    gridContainer.Position = UDim2.new(0.5, -totalGridSize / 2, 0.5, -totalGridSize / 2)
+    
+    local dominionPct = getDominionPercentage(data)
+    dominionLabel.Text = "السيطرة: " .. dominionPct .. "%"
+    
     for _, cell in ipairs(data) do
         local btn = Instance.new("TextButton")
+        btn.Name = cell.id
         btn.Size = UDim2.new(0, cellSize, 0, cellSize)
-
-        local sym = terrainSymbol(cell.terrainType)
-        local ownerSym = cell.owner == "Player" and "P"
-            or cell.owner == "AI1" and "A1"
-            or cell.owner == "AI2" and "A2"
-            or "N"
-
-        -- Show terrain symbol with owner indicator
-        btn.Text = sym .. ownerSym
-        btn.TextColor3 = Color3.new(1, 1, 1)
         btn.BackgroundColor3 = colorForOwner(cell.owner)
+        btn.BorderSizePixel = 0
+        btn.AutoButtonColor = false
         btn.Font = Enum.Font.GothamBold
-        btn.TextSize = math.clamp(12, 8, 18)
+        btn.TextSize = math.clamp(14, 10, 18)
+        btn.Text = TERRAIN_SYMBOLS[cell.terrainType] or "?"
+        btn.TextColor3 = Color3.new(1, 1, 1)
         btn.Parent = gridContainer
-
+        
+        -- Rounded corners
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 6)
+        corner.Parent = btn
+        
+        -- Stroke
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = THEME.Border
+        stroke.Thickness = 1
+        stroke.Parent = btn
+        
         cellButtons[cell.id] = btn
         btn:SetAttribute("Owner", cell.owner)
         btn:SetAttribute("TerrainType", cell.terrainType or "Plains")
-        btn:SetAttribute("TerrainColor", cell.color or Color3.new(1,1,1))
-        btn:SetAttribute("BaseYield", HttpService:JSONEncode(cell.baseYield or {}))
-        btn:SetAttribute("ProductionPerTurn", HttpService:JSONEncode(cell.productionPerTurn or {}))
-        btn:SetAttribute("StrategicValue", cell.strategicValue or 1)
-        btn:SetAttribute("DefenseModifier", cell.defenseModifier or 0)
-
-        -- Hover tooltip
+        btn:SetAttribute("CellData", HttpService:JSONEncode(cell))
+        
+        -- Hover effects
         btn.MouseEnter:Connect(function()
-            local tip = string.format(
-                "%s (%s)\nالمالك: %s\nالقيمة الاستراتيجية: %d\nالدفاع: %d%%",
-                cell.terrainType or "?",
-                cell.owner or "Neutral",
-                cell.owner or "Neutral",
-                cell.strategicValue or 1,
-                math.floor((cell.defenseModifier or 0) * 100)
-            )
-            -- Simple tooltip via label update
-            turnLabel.Text = tip
+            if btn:GetAttribute("Owner") ~= "Player" then
+                tweenObject(btn, {BackgroundColor3 = colorForOwner(cell.owner):Lerp(Color3.new(1,1,1), 0.3)}, 0.2)
+            end
         end)
-
+        
         btn.MouseLeave:Connect(function()
-            turnLabel.Text = "الدور: " .. (turnLabel:GetAttribute("LastTeam") or "لاعب")
+            tweenObject(btn, {BackgroundColor3 = colorForOwner(cell.owner)}, 0.2)
+        end)
+        
+        btn.MouseButton1Click:Connect(function()
+            showInspector(cell)
         end)
     end
 end
 
+-- ============================================================
+-- RESOURCES UPDATE
+-- ============================================================
 local function updateResources(resources)
     resourceLabel.Text = string.format(
-        "الموارد: Gold %d | Food %d | Wood %d | Relic %d",
+        "🪙 %d | 🍖 %d | 🪵 %d | 🔮 %d",
         resources.Gold or 0,
         resources.Food or 0,
         resources.Wood or 0,
@@ -221,45 +535,88 @@ local function updateResources(resources)
     )
 end
 
-local function playVisualEffect(cellIds, colorName)
-    local flashColor = {
-        Red = Color3.fromRGB(255, 0, 0),
-        Blue = Color3.fromRGB(0, 0, 255),
-        Green = Color3.fromRGB(0, 255, 0),
-        Yellow = Color3.fromRGB(255, 255, 0),
-        Purple = Color3.fromRGB(160, 32, 240),
-        Orange = Color3.fromRGB(255, 165, 0)
-    }[colorName] or Color3.new(1, 1, 1)
-
+-- ============================================================
+-- VISUAL EFFECTS
+-- ============================================================
+local function playCaptureEffect(cellIds, colorName)
+    local flashColorMap = {
+        Red = Color3.fromRGB(255, 60, 60),
+        Blue = Color3.fromRGB(60, 60, 255),
+        Green = Color3.fromRGB(60, 255, 60),
+        Yellow = Color3.fromRGB(255, 235, 60),
+        Purple = Color3.fromRGB(180, 60, 255),
+        Orange = Color3.fromRGB(255, 140, 0)
+    }
+    local flashColor = flashColorMap[colorName] or Color3.new(1, 1, 1)
+    
     for _, id in ipairs(cellIds) do
         local btn = cellButtons[id]
         if btn then
-            local original = btn.BackgroundColor3
-            btn.BackgroundColor3 = flashColor
-            task.spawn(function()
-                task.wait(0.15)
-                if btn and btn.Parent then
-                    btn.BackgroundColor3 = original
-                end
-            end)
+            local originalColor = btn.BackgroundColor3
+            -- Flash
+            tweenObject(btn, {BackgroundColor3 = flashColor}, 0.1)
+            task.wait(0.1)
+            -- Pulse back
+            tweenObject(btn, {BackgroundColor3 = originalColor}, 0.2)
         end
     end
 end
 
+-- ============================================================
+-- EVENTS
+-- ============================================================
 UpdateMap.OnClientEvent:Connect(function(data, currentTeam, active)
+    currentTeam = currentTeam or "Player"
+    isGameActive = active
+    
     buildMap(data)
-    turnLabel:SetAttribute("LastTeam", currentTeam)
+    
+    turnLabel.Text = "الدور: " .. currentTeam
+    turnBadge.Text = currentTeam == "Player" and "P" or (currentTeam == "AI1" and "A1" or "A2")
+    turnBadge.BackgroundColor3 = colorForOwner(currentTeam)
+    
     if active then
-        turnLabel.Text = "الدور: " .. currentTeam
-        turnLabel.TextColor3 = (currentTeam == "Player") and Color3.new(0, 1, 0) or Color3.new(1, 0.6, 0)
+        turnLabel.TextColor3 = (currentTeam == "Player") and THEME.Success or THEME.Warning
     else
+        turnLabel.TextColor3 = THEME.Danger
         turnLabel.Text = "انتهت اللعبة!"
     end
 end)
 
 GameOver.OnClientEvent:Connect(function(winner)
+    isGameActive = false
     turnLabel.Text = "الفائز: " .. winner
-    turnLabel.TextColor3 = Color3.new(0, 1, 0)
+    turnLabel.TextColor3 = THEME.Success
+    
+    -- Show win overlay
+    local overlay = Instance.new("Frame")
+    overlay.Size = UDim2.new(1, 0, 1, 0)
+    overlay.Position = UDim2.new(0, 0, 0, 0)
+    overlay.BackgroundColor3 = Color3.new(0, 0, 0)
+    overlay.BackgroundTransparency = 0.5
+    overlay.ZIndex = 10
+    overlay.Parent = main
+    
+    local winMsg = Instance.new("TextLabel")
+    winMsg.Size = UDim2.new(0, 400, 0, 100)
+    winMsg.Position = UDim2.new(0.5, -200, 0.5, -50)
+    winMsg.BackgroundTransparency = 1
+    winMsg.Text = "🏆 الفائز: " .. winner
+    winMsg.TextColor3 = THEME.Success
+    winMsg.Font = Enum.Font.GothamBold
+    winMsg.TextSize = 32
+    winMsg.Parent = overlay
+    
+    tweenObject(overlay, {BackgroundTransparency = 0.3}, 0.5)
+    tweenObject(winMsg, {TextTransparency = 0}, 0.5)
+    
+    -- Auto hide after 5 seconds
+    task.delay(5, function()
+        tweenObject(overlay, {BackgroundTransparency = 1}, 0.5)
+        tweenObject(winMsg, {TextTransparency = 1}, 0.5)
+        task.wait(0.5)
+        overlay:Destroy()
+    end)
 end)
 
 ResourceUpdate.OnClientEvent:Connect(function(resources)
@@ -267,19 +624,62 @@ ResourceUpdate.OnClientEvent:Connect(function(resources)
 end)
 
 VisualEffect.OnClientEvent:Connect(function(cellIds, colorName)
-    playVisualEffect(cellIds, colorName)
+    playCaptureEffect(cellIds, colorName)
 end)
+
+-- Close inspector
+closeInspector.MouseButton1Click:Connect(hideInspector)
+
+-- Initialize size buttons
+for _, sz in ipairs(MapData.AvailableSizes) do
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 40, 1, 0)
+    btn.BackgroundColor3 = THEME.Surface
+    btn.BorderSizePixel = 0
+    btn.Text = tostring(sz) .. "×" .. tostring(sz)
+    btn.TextColor3 = THEME.TextPrimary
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 12
+    btn.Parent = sizeButtonsFrame
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        SetMapSize:FireServer(sz)
+    end)
+end
 
 -- Initialize color buttons
 local function setupColorButtons(colors)
     for _, c in ipairs(colors) do
         local btn = Instance.new("TextButton")
         btn.Text = c
-        btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
         btn.TextColor3 = Color3.new(1, 1, 1)
         btn.Font = Enum.Font.GothamBold
-        btn.TextSize = 16
+        btn.TextSize = 14
+        btn.AutoButtonColor = false
         btn.Parent = colorFrame
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 8)
+        corner.Parent = btn
+        
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Color3.fromRGB(90, 90, 100)
+        stroke.Thickness = 1
+        stroke.Parent = btn
+        
+        -- Hover
+        btn.MouseEnter:Connect(function()
+            tweenObject(btn, {BackgroundColor3 = Color3.fromRGB(90, 90, 100)}, 0.2)
+        end)
+        btn.MouseLeave:Connect(function()
+            tweenObject(btn, {BackgroundColor3 = Color3.fromRGB(60, 60, 70)}, 0.2)
+        end)
+        
         btn.MouseButton1Click:Connect(function()
             SelectColor:FireServer(c)
         end)
