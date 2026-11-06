@@ -11,7 +11,7 @@ function CaptureSystem:capture(board, team, chosenColor, MapData)
         end
     end
     if not valid then
-        return {}, {Gold = 0, Food = 0, Wood = 0}
+        return {}, {Gold = 0, Food = 0, Wood = 0, Relic = 0}
     end
 
     local toCapture = {}
@@ -39,12 +39,13 @@ function CaptureSystem:capture(board, team, chosenColor, MapData)
         end
     end
 
-    -- Apply capture and compute resources
-    local gainedResources = {Gold = 0, Food = 0, Wood = 0}
+    -- Apply capture and compute gained resources (baseYield)
+    local gainedResources = {Gold = 0, Food = 0, Wood = 0, Relic = 0}
     for _, cell in ipairs(unique) do
         cell.owner = team
-        for resType, amount in pairs(cell.resources) do
-            gainedResources[resType] = gainedResources[resType] + amount
+        -- Gain the baseYield of the captured cell
+        for resType, amount in pairs(cell.baseYield) do
+            gainedResources[resType] = (gainedResources[resType] or 0) + amount
         end
     end
 

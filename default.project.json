@@ -9,6 +9,49 @@
         "MapData": {
           "$className": "ModuleScript",
           "$path": "shared/MapData.lua"
+        },
+        "Engine": {
+          "$className": "Folder",
+          "Cell": {
+            "$className": "ModuleScript",
+            "$path": "shared/Engine/Cell.lua"
+          },
+          "Board": {
+            "$className": "ModuleScript",
+            "$path": "shared/Engine/Board.lua"
+          },
+          "GameState": {
+            "$className": "ModuleScript",
+            "$path": "shared/Engine/GameState.lua"
+          },
+          "TurnManager": {
+            "$className": "ModuleScript",
+            "$path": "shared/Engine/TurnManager.lua"
+          },
+          "ResourceSystem": {
+            "$className": "ModuleScript",
+            "$path": "shared/Engine/ResourceSystem.lua"
+          },
+          "WinSystem": {
+            "$className": "ModuleScript",
+            "$path": "shared/Engine/WinSystem.lua"
+          },
+          "CaptureSystem": {
+            "$className": "ModuleScript",
+            "$path": "shared/Engine/CaptureSystem.lua"
+          },
+          "ValidationSystem": {
+            "$className": "ModuleScript",
+            "$path": "shared/Engine/ValidationSystem.lua"
+          },
+          "AIConfig": {
+            "$className": "ModuleScript",
+            "$path": "shared/Engine/AIConfig.lua"
+          },
+          "AIPlayer": {
+            "$className": "ModuleScript",
+            "$path": "shared/Engine/AIPlayer.lua"
+          }
         }
       },
       "GameRemotes": {

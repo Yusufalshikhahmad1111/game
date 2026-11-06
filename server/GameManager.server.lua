@@ -13,9 +13,17 @@ local MapData = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("M
 local GameState = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Engine"):WaitForChild("GameState"))
 local ValidationSystem = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Engine"):WaitForChild("ValidationSystem"))
 local CaptureSystem = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Engine"):WaitForChild("CaptureSystem"))
+local AIConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Engine"):WaitForChild("AIConfig"))
+local AIPlayer = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Engine"):WaitForChild("AIPlayer"))
 
 -- Initialize game state
 local gameState = GameState.new(MapData, MapData.DefaultGridSize)
+
+-- Create AI players for AI teams
+local aiPlayers = {}
+for team, config in pairs(AIConfig.DefaultAIs) do
+    aiPlayers[team] = AIPlayer.new(team, config.personality, config.difficulty)
+end
 
 local function broadcastMap()
     local data = gameState.board:serialize()
@@ -32,7 +40,6 @@ local function handlePlayerTurn(colorName)
     if not ValidationSystem.validateColor(colorName, MapData) then return end
 
     local capturedCount, gainedResources = gameState:applyCapture("Player", colorName, CaptureSystem)
-    -- resources already added inside applyCapture
 
     local won, winner = gameState:checkWin()
     if won then
@@ -48,54 +55,41 @@ local function handlePlayerTurn(colorName)
     local currentTeam = gameState:getCurrentTeam()
     if currentTeam ~= "Player" then
         task.wait(1.2)
-        gameState:AITurn(currentTeam) -- we'll add method to GameState? We'll handle here.
+        handleAITurn(currentTeam)
     end
 end
 
--- We'll add a method to GameState for AI turn? Instead we keep AI logic here but using cloned state.
 local function handleAITurn(team)
     if not ValidationSystem.validateGameActive(gameState:isActive()) then return end
     if not ValidationSystem.validateTurn(gameState:getCurrentTeam(), team) then return end
 
-    -- AI uses cloned state for simulation
-    local clonedState = gameState:clone()
-    local bestColor, bestScore = nil, -1
-    local bestCaptureCount = 0
-
-    for _, color in ipairs(MapData.Colors) do
-        -- Simulate capture on cloned board
-        local clonedBoard = clonedState.board
-        local captured = 0
-        local gainedResources = {Gold = 0, Food = 0, Wood = 0}
-        for x = 1, clonedBoard.gridSize do
-            for y = 1, clonedBoard.gridSize do
-                local cell = clonedBoard:getCell(x, y)
-                if cell and cell.owner == team then
-                    local neighbors = clonedBoard:getNeighbors(cell)
-                    for _, nb in ipairs(neighbors) do
-                        if nb and nb.owner ~= team and nb.color == color then
-                            -- capture nb in simulation
-                            nb.owner = team
-                            captured = captured + 1
-                            for resType, amount in pairs(nb.resources) do
-                                gainedResources[resType] = gainedResources[resType] + amount
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        local score = captured * 2 + (gainedResources.Gold + gainedResources.Food + gainedResources.Wood) * 0.1
-        if score > bestScore then
-            bestScore = score
-            bestColor = color
-            bestCaptureCount = captured
-        end
+    local aiPlayer = aiPlayers[team]
+    if not aiPlayer then
+        -- Fallback: skip turn if no AI configured
+        gameState:advanceTurn()
+        broadcastMap()
+        broadcastResources()
+        return
     end
 
-    if bestColor then
-        -- Apply capture on real state
-        local capturedCount, gainedResources = gameState:applyCapture(team, bestColor, CaptureSystem)
+    -- AI chooses color using its personality and difficulty (safe, uses cloned state internally)
+    local chosenColor, err = aiPlayer:chooseColor(gameState, MapData)
+    if not chosenColor then
+        warn("AI " .. team .. " failed to choose color: " .. tostring(err))
+        gameState:advanceTurn()
+        broadcastMap()
+        broadcastResources()
+        return
+    end
+
+    -- Apply the chosen capture on the real state
+    local capturedCount, gainedResources = gameState:applyCapture(team, chosenColor, CaptureSystem)
+
+    -- Optional: log AI decision for debugging
+    local log = aiPlayer:getDecisionLog()
+    if log then
+        print(string.format("[AI %s] Chose color: %s | Score: %.2f | Captured: %d",
+            team, chosenColor, log.bestScore or 0, log.chosenColor and capturedCount or 0))
     end
 
     local won, winner = gameState:checkWin()
@@ -116,8 +110,12 @@ end)
 SetMapSize.OnServerEvent:Connect(function(_player, size)
     if not ValidationSystem.validateGameActive(gameState:isActive()) then return end
     if not ValidationSystem.validateMapSize(size, MapData) then return end
-    -- Reset game with new size
     gameState = GameState.new(MapData, size)
+    -- Recreate AI players for new game
+    aiPlayers = {}
+    for team, config in pairs(AIConfig.DefaultAIs) do
+        aiPlayers[team] = AIPlayer.new(team, config.personality, config.difficulty)
+    end
     broadcastMap()
     broadcastResources()
 end)

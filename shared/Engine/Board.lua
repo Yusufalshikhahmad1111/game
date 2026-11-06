@@ -36,12 +36,12 @@ function Board:assignTerrainTypes()
     local gridSize = self.gridSize
     
     -- We'll create a simple strategic placement:
-    - Some clusters of same terrain
-    - Fortresses near edges or in clusters
-    - Mines in certain areas
-    - Only one Capital
-    - etc.
-    
+    -- Some clusters of same terrain
+    -- Fortresses near edges or in clusters
+    -- Mines in certain areas
+    -- Only one Capital
+    -- etc.
+
     -- For now, use weighted random with some strategy
     -- In future, we can make this more sophisticated
     
