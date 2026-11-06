@@ -1,9 +1,12 @@
 -- StarterPlayer/StarterPlayerScripts/ClientController.client.lua (LocalScript)
--- M6: Multiplayer + Fairness UI
+-- M8: Premium Visual Upgrade - Modern Strategy Game UI
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
+local SoundService = game:GetService("SoundService")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 
@@ -27,34 +30,53 @@ local TurnTimeout = Remotes:WaitForChild("TurnTimeout")
 local MapData = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("MapData"))
 
 -- ============================================================
--- CONFIGURATION & THEME
+-- PREMIUM THEME & CONFIGURATION
 -- ============================================================
 local THEME = {
-    Background = Color3.fromRGB(18, 18, 22),
-    Surface = Color3.fromRGB(28, 28, 34),
-    SurfaceElevated = Color3.fromRGB(38, 38, 46),
-    Border = Color3.fromRGB(60, 60, 70),
-    TextPrimary = Color3.new(1, 1, 1),
-    TextSecondary = Color3.fromRGB(200, 200, 200),
-    Accent = Color3.fromRGB(0, 170, 255),
-    Success = Color3.fromRGB(0, 255, 120),
-    Warning = Color3.fromRGB(255, 180, 0),
-    Danger = Color3.fromRGB(255, 60, 60),
-    Neutral = Color3.fromRGB(120, 120, 120)
+    -- Deep space dark theme
+    Background    = Color3.fromRGB(10, 12, 18),
+    Surface       = Color3.fromRGB(20, 24, 34),
+    SurfaceElev   = Color3.fromRGB(30, 36, 50),
+    SurfaceGlow   = Color3.fromRGB(40, 48, 66),
+    Border        = Color3.fromRGB(60, 72, 96),
+    BorderGlow    = Color3.fromRGB(0, 170, 255),
+    TextPrimary   = Color3.new(1, 1, 1),
+    TextSecondary = Color3.fromRGB(180, 190, 210),
+    TextMuted     = Color3.fromRGB(120, 130, 150),
+    Accent        = Color3.fromRGB(0, 170, 255),
+    AccentGlow    = Color3.fromRGB(0, 200, 255),
+    Success       = Color3.fromRGB(0, 255, 120),
+    SuccessGlow   = Color3.fromRGB(60, 255, 140),
+    Warning       = Color3.fromRGB(255, 180, 0),
+    WarningGlow   = Color3.fromRGB(255, 200, 60),
+    Danger        = Color3.fromRGB(255, 60, 60),
+    DangerGlow    = Color3.fromRGB(255, 80, 80),
+    Neutral       = Color3.fromRGB(120, 120, 120),
+    Gold          = Color3.fromRGB(255, 215, 0),
+    Food          = Color3.fromRGB(120, 200, 80),
+    Wood          = Color3.fromRGB(160, 120, 60),
+    Relic         = Color3.fromRGB(200, 100, 255)
 }
 
 local TEAM_COLORS = {
-    Player = Color3.fromRGB(0, 120, 255),
-    AI1 = Color3.fromRGB(255, 50, 50),
-    AI2 = Color3.fromRGB(50, 255, 50),
-    Neutral = Color3.fromRGB(100, 100, 100)
+    Player = Color3.fromRGB(0, 170, 255),
+    AI1    = Color3.fromRGB(255, 60, 60),
+    AI2    = Color3.fromRGB(60, 255, 60),
+    Neutral= Color3.fromRGB(100, 100, 100)
+}
+
+local TEAM_NAMES_AR = {
+    Player = "اللاعب",
+    AI1    = "الذكاء الاصطناعي 1",
+    AI2    = "الذكاء الاصطناعي 2",
+    Neutral= "محايد"
 }
 
 local TERRAIN_SYMBOLS = {
     Plains = "🌾",
     Forest = "🌲",
-    Mine = "⛏️",
-    Ruins = "🏛️",
+    Mine   = "⛏️",
+    Ruins  = "🏛️",
     Fortress = "🏰",
     Capital = "🏛️",
     Harbor = "⚓"
@@ -63,35 +85,89 @@ local TERRAIN_SYMBOLS = {
 local TERRAIN_NAMES_AR = {
     Plains = "سهل",
     Forest = "غابة",
-    Mine = "منجم",
-    Ruins = "آثار",
+    Mine   = "منجم",
+    Ruins  = "آثار",
     Fortress = "حصن",
     Capital = "عاصمة",
     Harbor = "ميناء"
 }
 
--- ============================================================
--- GUI STATE
--- ============================================================
-local cellButtons = {}
-local selectedCellId = nil
-local isGameActive = false
-local currentTeam = "Player"
-local myTeam = nil
-local myResources = {Gold = 0, Food = 0, Wood = 0, Relic = 0}
-local turnStartTime = nil
-local turnTimeoutDuration = 30
+local POWER_DATA = {
+    Scout      = {icon = "🔍", nameAr = "كشاف",   color = THEME.Accent},
+    Harvest    = {icon = "🌾", nameAr = "حصاد",   color = THEME.Success},
+    Fortify    = {icon = "🛡️", nameAr = "حصن",   color = THEME.Warning},
+    Sabotage   = {icon = "💣", nameAr = "تخريب", color = THEME.Danger},
+    ColorShift = {icon = "🎨", nameAr = "تحويل", color = THEME.Relic},
+    Shockwave  = {icon = "💥", nameAr = "موجة",   color = Color3.fromRGB(255, 100, 50)}
+}
 
 -- ============================================================
--- GUI CONSTRUCTION
+-- STATE
+-- ============================================================
+local cellButtons     = {}
+local selectedCellId  = nil
+local isGameActive    = false
+local currentTeam     = "Player"
+local myTeam          = nil
+local myResources     = {Gold = 0, Food = 0, Wood = 0, Relic = 0}
+local turnStartTime   = nil
+local turnTimeoutDuration = 30
+local lobbyAnimConn   = nil
+
+-- ============================================================
+-- HELPERS
+-- ============================================================
+local function colorForOwner(owner)
+    return TEAM_COLORS[owner] or THEME.Neutral
+end
+
+local function getDominionPercentage(data)
+    if not data or #data == 0 then return 0 end
+    local p = 0
+    for _, c in ipairs(data) do
+        if c.owner == myTeam then p = p + 1 end
+    end
+    return math.floor((p / #data) * 100)
+end
+
+local function tween(obj, props, duration, style, dir)
+    duration = duration or 0.25
+    style    = style    or Enum.EasingStyle.Quad
+    dir      = dir      or Enum.EasingDirection.Out
+    local t = TweenService:Create(obj, TweenInfo.new(duration, style, dir), props)
+    t:Play()
+    return t
+end
+
+local function ripple(btn)
+    local ripple = Instance.new("Frame")
+    ripple.Name = "Ripple"
+    ripple.Size = UDim2.new(0, 0, 0, 0)
+    ripple.Position = UDim2.new(0.5, 0, 0.5, 0)
+    ripple.BackgroundColor3 = Color3.new(1, 1, 1)
+    ripple.BackgroundTransparency = 0.7
+    ripple.BorderSizePixel = 0
+    ripple.ZIndex = btn.ZIndex + 1
+    ripple.Parent = btn
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = ripple
+
+    tween(ripple, {Size = UDim2.new(2, 0, 2, 0), Position = UDim2.new(-0.5, 0, -0.5, 0), BackgroundTransparency = 1}, 0.4)
+    task.delay(0.4, function() ripple:Destroy() end)
+end
+
+-- ============================================================
+-- GUI ROOT
 -- ============================================================
 local gui = Instance.new("ScreenGui")
-gui.Name = "StrategyGameGUI"
+gui.Name = "IslandDominionGUI"
 gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.DisplayOrder = 10
 gui.Parent = player:WaitForChild("PlayerGui")
 
--- Main container
 local main = Instance.new("Frame")
 main.Name = "Main"
 main.Size = UDim2.new(1, 0, 1, 0)
@@ -100,532 +176,946 @@ main.BackgroundColor3 = THEME.Background
 main.BorderSizePixel = 0
 main.Parent = gui
 
--- ============================================================
--- LOBBY PANEL (shown before match starts)
--- ============================================================
-local lobbyPanel = Instance.new("Frame")
-lobbyPanel.Name = "LobbyPanel"
-lobbyPanel.Size = UDim2.new(1, 0, 1, 0)
-lobbyPanel.Position = UDim2.new(0, 0, 0, 0)
-lobbyPanel.BackgroundColor3 = THEME.Surface
-lobbyPanel.BorderSizePixel = 0
-lobbyPanel.Visible = true
-lobbyPanel.Parent = main
+-- Subtle animated background grid
+local bgPattern = Instance.new("Frame")
+bgPattern.Name = "BgPattern"
+bgPattern.Size = UDim2.new(1, 0, 1, 0)
+bgPattern.BackgroundTransparency = 1
+bgPattern.Parent = main
 
-local lobbyTitle = Instance.new("TextLabel")
-lobbyTitle.Name = "Title"
-lobbyTitle.Size = UDim2.new(1, 0, 0, 60)
-lobbyTitle.BackgroundTransparency = 1
-lobbyTitle.Text = "Island Dominion - اللوبي"
-lobbyTitle.TextColor3 = THEME.TextPrimary
-lobbyTitle.Font = Enum.Font.GothamBold
-lobbyTitle.TextSize = 24
-lobbyTitle.Parent = lobbyPanel
+local bgStroke = Instance.new("UIStroke")
+bgStroke.Color = Color3.fromRGB(30, 36, 50)
+bgStroke.Thickness = 1
+bgStroke.Parent = bgPattern
 
-local lobbyPlayersList = Instance.new("ScrollingFrame")
-lobbyPlayersList.Name = "PlayersList"
-lobbyPlayersList.Size = UDim2.new(0, 300, 0, 300)
-lobbyPlayersList.Position = UDim2.new(0.5, -150, 0.3, -150)
-lobbyPlayersList.BackgroundColor3 = THEME.SurfaceElevated
-lobbyPlayersList.BorderSizePixel = 0
-lobbyPlayersList.ScrollBarThickness = 4
-lobbyPlayersList.AutomaticCanvasSize = Enum.AutomaticSize.Y
-lobbyPlayersList.Parent = lobbyPanel
+-- ============================================================
+-- LOBBY SCREEN
+-- ============================================================
+local lobby = Instance.new("Frame")
+lobby.Name = "Lobby"
+lobby.Size = UDim2.new(1, 0, 1, 0)
+lobby.Position = UDim2.new(0, 0, 0, 0)
+lobby.BackgroundColor3 = THEME.Surface
+lobby.BorderSizePixel = 0
+lobby.Visible = true
+lobby.Parent = main
+
+-- Lobby header
+local lobbyHeader = Instance.new("Frame")
+lobbyHeader.Name = "Header"
+lobbyHeader.Size = UDim2.new(1, -40, 0, 90)
+lobbyHeader.Position = UDim2.new(0, 20, 0, 20)
+lobbyHeader.BackgroundTransparency = 1
+lobbyHeader.Parent = lobby
+
+local gameTitle = Instance.new("TextLabel")
+gameTitle.Name = "Title"
+gameTitle.Size = UDim2.new(0.6, 0, 1, 0)
+gameTitle.BackgroundTransparency = 1
+gameTitle.Text = "ISLAND DOMINION"
+gameTitle.TextColor3 = THEME.TextPrimary
+gameTitle.Font = Enum.Font.GothamBlack
+gameTitle.TextSize = 34
+gameTitle.TextXAlignment = Enum.TextXAlignment.Left
+gameTitle.Parent = lobbyHeader
+
+local gameSub = Instance.new("TextLabel")
+gameSub.Name = "Subtitle"
+gameSub.Size = UDim2.new(0.6, 0, 0, 24)
+gameSub.Position = UDim2.new(0, 0, 0, 56)
+gameSub.BackgroundTransparency = 1
+gameSub.Text = "استراتيجية الأراضي -יברסية ثنائية الأبعاد"
+gameSub.TextColor3 = THEME.TextSecondary
+gameSub.Font = Enum.Font.Gotham
+gameSub.TextSize = 16
+gameSub.TextXAlignment = Enum.TextXAlignment.Left
+gameSub.Parent = lobbyHeader
+
+-- Lobby center card
+local lobbyCard = Instance.new("Frame")
+lobbyCard.Name = "Card"
+lobbyCard.Size = UDim2.new(0, 420, 0, 460)
+lobbyCard.Position = UDim2.new(0.5, -210, 0.5, -230)
+lobbyCard.BackgroundColor3 = THEME.SurfaceElev
+lobbyCard.BorderSizePixel = 0
+lobbyCard.Parent = lobby
+
+local cardCorner = Instance.new("UICorner")
+cardCorner.CornerRadius = UDim.new(0, 16)
+cardCorner.Parent = lobbyCard
+
+local cardStroke = Instance.new("UIStroke")
+cardStroke.Color = THEME.Border
+cardStroke.Thickness = 1.5
+cardStroke.Parent = lobbyCard
+
+local cardGlow = Instance.new("ImageLabel")
+cardGlow.Name = "Glow"
+cardGlow.Size = UDim2.new(1, 40, 1, 40)
+cardGlow.Position = UDim2.new(0, -20, 0, -20)
+cardGlow.BackgroundTransparency = 1
+cardGlow.Image = "rbxassetid://5028857084" -- soft glow
+cardGlow.ImageColor3 = Color3.fromRGB(0, 170, 255)
+cardGlow.ImageTransparency = 0.8
+cardGlow.ScaleType = Enum.ScaleType.Slice
+cardGlow.SliceCenter = Rect.new(24, 24, 276, 276)
+cardGlow.ZIndex = 0
+cardGlow.Parent = lobbyCard
+
+local cardTitle = Instance.new("TextLabel")
+cardTitle.Name = "CardTitle"
+cardTitle.Size = UDim2.new(1, -30, 0, 40)
+cardTitle.Position = UDim2.new(0, 20, 0, 20)
+cardTitle.BackgroundTransparency = 1
+cardTitle.Text = "اللوبي"
+cardTitle.TextColor3 = THEME.TextPrimary
+cardTitle.Font = Enum.Font.GothamBold
+cardTitle.TextSize = 22
+cardTitle.TextXAlignment = Enum.TextXAlignment.Left
+cardTitle.Parent = lobbyCard
+
+-- Players list
+local playersList = Instance.new("ScrollingFrame")
+playersList.Name = "PlayersList"
+playersList.Size = UDim2.new(1, -30, 0, 180)
+playersList.Position = UDim2.new(0, 15, 0, 75)
+playersList.BackgroundColor3 = THEME.Surface
+playersList.BorderSizePixel = 0
+playersList.ScrollBarThickness = 3
+playersList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+playersList.Parent = lobbyCard
+
+local listCorner = Instance.new("UICorner")
+listCorner.CornerRadius = UDim.new(0, 10)
+listCorner.Parent = playersList
+
+local listStroke = Instance.new("UIStroke")
+listStroke.Color = THEME.Border
+listStroke.Thickness = 1
+listStroke.Parent = playersList
 
 local listLayout = Instance.new("UIListLayout")
-listLayout.Padding = UDim2.new(0, 0, 0, 6)
+listLayout.Padding = UDim2.new(0, 0, 0, 8)
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-listLayout.Parent = lobbyPlayersList
+listLayout.Parent = playersList
 
+-- My team label
 local myTeamLabel = Instance.new("TextLabel")
-myTeamLabel.Name = "MyTeamLabel"
-myTeamLabel.Size = UDim2.new(0, 300, 0, 40)
-myTeamLabel.Position = UDim2.new(0.5, -150, 0.65, 0)
+myTeamLabel.Name = "MyTeam"
+myTeamLabel.Size = UDim2.new(1, -30, 0, 30)
+myTeamLabel.Position = UDim2.new(0, 15, 0, 265)
 myTeamLabel.BackgroundTransparency = 1
 myTeamLabel.Text = "فريقك: غير محدد"
 myTeamLabel.TextColor3 = THEME.TextSecondary
 myTeamLabel.Font = Enum.Font.GothamBold
 myTeamLabel.TextSize = 16
-myTeamLabel.Parent = lobbyPanel
+myTeamLabel.TextXAlignment = Enum.TextXAlignment.Left
+myTeamLabel.Parent = lobbyCard
 
-local readyButton = Instance.new("TextButton")
-readyButton.Name = "ReadyButton"
-readyButton.Size = UDim2.new(0, 140, 0, 44)
-readyButton.Position = UDim2.new(0.5, -150, 0.72, 0)
-readyButton.BackgroundColor3 = THEME.Success
-readyButton.BorderSizePixel = 0
-readyButton.Text = "جاهز"
-readyButton.TextColor3 = Color3.new(1, 1, 1)
-readyButton.Font = Enum.Font.GothamBold
-readyButton.TextSize = 16
-readyButton.Parent = lobbyPanel
+-- Map size selector
+local sizeLabel = Instance.new("TextLabel")
+sizeLabel.Name = "SizeLabel"
+sizeLabel.Size = UDim2.new(1, -30, 0, 22)
+sizeLabel.Position = UDim2.new(0, 15, 0, 305)
+sizeLabel.BackgroundTransparency = 1
+sizeLabel.Text = "حجم الخريطة"
+sizeLabel.TextColor3 = THEME.TextMuted
+sizeLabel.Font = Enum.Font.Gotham
+sizeLabel.TextSize = 13
+sizeLabel.TextXAlignment = Enum.TextXAlignment.Left
+sizeLabel.Parent = lobbyCard
+
+local sizeRow = Instance.new("Frame")
+sizeRow.Name = "SizeRow"
+sizeRow.Size = UDim2.new(1, -30, 0, 36)
+sizeRow.Position = UDim2.new(0, 15, 0, 330)
+sizeRow.BackgroundTransparency = 1
+sizeRow.Parent = lobbyCard
+
+local sizeLayout = Instance.new("UIListLayout")
+sizeLayout.FillDirection = Enum.FillDirection.Horizontal
+sizeLayout.Padding = UDim2.new(0, 8, 0, 0)
+sizeLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+sizeLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+sizeLayout.Parent = sizeRow
+
+-- Action buttons
+local readyBtn = Instance.new("TextButton")
+readyBtn.Name = "ReadyBtn"
+readyBtn.Size = UDim2.new(0, 180, 0, 48)
+readyBtn.Position = UDim2.new(0, 15, 0, 390)
+readyBtn.BackgroundColor3 = THEME.Success
+readyBtn.BorderSizePixel = 0
+readyBtn.Text = "جاهز"
+readyBtn.TextColor3 = Color3.new(1, 1, 1)
+readyBtn.Font = Enum.Font.GothamBold
+readyBtn.TextSize = 17
+readyBtn.AutoButtonColor = false
+readyBtn.Parent = lobbyCard
 
 local readyCorner = Instance.new("UICorner")
-readyCorner.CornerRadius = UDim.new(0, 8)
-readyCorner.Parent = readyButton
+readyCorner.CornerRadius = UDim.new(0, 12)
+readyCorner.Parent = readyBtn
 
-local startButton = Instance.new("TextButton")
-startButton.Name = "StartButton"
-startButton.Size = UDim2.new(0, 140, 0, 44)
-startButton.Position = UDim2.new(0.5, 10, 0.72, 0)
-startButton.BackgroundColor3 = THEME.Accent
-startButton.BorderSizePixel = 0
-startButton.Text = "ابدأ المباراة"
-startButton.TextColor3 = Color3.new(1, 1, 1)
-startButton.Font = Enum.Font.GothamBold
-startButton.TextSize = 16
-startButton.Parent = lobbyPanel
+local readyStroke = Instance.new("UIStroke")
+readyStroke.Color = THEME.Success
+readyStroke.Thickness = 1
+readyStroke.Parent = readyBtn
+
+local startBtn = Instance.new("TextButton")
+startBtn.Name = "StartBtn"
+startBtn.Size = UDim2.new(0, 180, 0, 48)
+startBtn.Position = UDim2.new(0, 220, 0, 390)
+startBtn.BackgroundColor3 = THEME.Accent
+startBtn.BorderSizePixel = 0
+startBtn.Text = "ابدأ المباراة"
+startBtn.TextColor3 = Color3.new(1, 1, 1)
+startBtn.Font = Enum.Font.GothamBold
+startBtn.TextSize = 17
+startBtn.AutoButtonColor = false
+startBtn.Parent = lobbyCard
 
 local startCorner = Instance.new("UICorner")
-startCorner.CornerRadius = UDim.new(0, 8)
-startCorner.Parent = startButton
+startCorner.CornerRadius = UDim.new(0, 12)
+startCorner.Parent = startBtn
 
-local mapSizeLabel = Instance.new("TextLabel")
-mapSizeLabel.Name = "MapSizeLabel"
-mapSizeLabel.Size = UDim2.new(0, 300, 0, 24)
-mapSizeLabel.Position = UDim2.new(0.5, -150, 0.8, 0)
-mapSizeLabel.BackgroundTransparency = 1
-mapSizeLabel.Text = "حجم الخريطة: 10×10"
-mapSizeLabel.TextColor3 = THEME.TextSecondary
-mapSizeLabel.Font = Enum.Font.Gotham
-mapSizeLabel.TextSize = 14
-mapSizeLabel.Parent = lobbyPanel
-
-local mapSizeButtons = Instance.new("Frame")
-mapSizeButtons.Name = "MapSizeButtons"
-mapSizeButtons.Size = UDim2.new(0, 300, 0, 30)
-mapSizeButtons.Position = UDim2.new(0.5, -150, 0.84, 0)
-mapSizeButtons.BackgroundTransparency = 1
-mapSizeButtons.Parent = lobbyPanel
-
-local msLayout = Instance.new("UIListLayout")
-msLayout.FillDirection = Enum.FillDirection.Horizontal
-msLayout.Padding = UDim2.new(0, 6, 0, 0)
-msLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-msLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-msLayout.Parent = mapSizeButtons
+local startStroke = Instance.new("UIStroke")
+startStroke.Color = THEME.Accent
+startStroke.Thickness = 1
+startStroke.Parent = startBtn
 
 -- ============================================================
--- TOP HUD (shown during match)
+-- MATCH HUD
 -- ============================================================
-local topHUD = Instance.new("Frame")
-topHUD.Name = "TopHUD"
-topHUD.Size = UDim2.new(1, 0, 0, 80)
-topHUD.Position = UDim2.new(0, 0, 0, 0)
-topHUD.BackgroundColor3 = THEME.Surface
-topHUD.BorderSizePixel = 0
-topHUD.Visible = false
-topHUD.Parent = main
+local hud = Instance.new("Frame")
+hud.Name = "HUD"
+hud.Size = UDim2.new(1, 0, 1, 0)
+hud.Position = UDim2.new(0, 0, 0, 0)
+hud.BackgroundTransparency = 1
+hud.Visible = false
+hud.Parent = main
 
-local topHUDLine = Instance.new("Frame")
-topHUDLine.Size = UDim2.new(1, 0, 0, 2)
-topHUDLine.Position = UDim2.new(0, 0, 1, -2)
-topHUDLine.BackgroundColor3 = THEME.Accent
-topHUDLine.BorderSizePixel = 0
-topHUDLine.Parent = topHUD
+-- Top bar
+local topBar = Instance.new("Frame")
+topBar.Name = "TopBar"
+topBar.Size = UDim2.new(1, -40, 0, 70)
+topBar.Position = UDim2.new(0, 20, 0, 16)
+topBar.BackgroundTransparency = 1
+topBar.Parent = hud
 
-local turnContainer = Instance.new("Frame")
-turnContainer.Name = "TurnContainer"
-turnContainer.Size = UDim2.new(0.33, 0, 1, 0)
-turnContainer.Position = UDim2.new(0, 0, 0, 0)
-turnContainer.BackgroundTransparency = 1
-turnContainer.Parent = topHUD
-
-local turnLabel = Instance.new("TextLabel")
-turnLabel.Name = "TurnLabel"
-turnLabel.Size = UDim2.new(1, -40, 0.5, 0)
-turnLabel.Position = UDim2.new(0, 20, 0, 0)
-turnLabel.BackgroundTransparency = 1
-turnLabel.Text = "الدور: لاعب"
-turnLabel.TextColor3 = THEME.TextPrimary
-turnLabel.Font = Enum.Font.GothamBold
-turnLabel.TextSize = 18
-turnLabel.TextXAlignment = Enum.TextXAlignment.Left
-turnLabel.Parent = turnContainer
+local turnBox = Instance.new("Frame")
+turnBox.Name = "TurnBox"
+turnBox.Size = UDim2.new(0, 260, 1, 0)
+turnBox.BackgroundTransparency = 1
+turnBox.Parent = topBar
 
 local turnBadge = Instance.new("TextLabel")
-turnBadge.Name = "TurnBadge"
-turnBadge.Size = UDim2.new(0, 30, 0, 30)
-turnBadge.Position = UDim2.new(1, -40, 0.15, 0)
+turnBadge.Name = "Badge"
+turnBadge.Size = UDim2.new(0, 52, 0, 32)
+turnBadge.Position = UDim2.new(0, 0, 0.5, -16)
 turnBadge.BackgroundColor3 = THEME.Success
 turnBadge.BorderSizePixel = 0
 turnBadge.Text = "P"
-turnBadge.TextColor3 = Color3.new(1, 1, 1)
+turnBadge.TextColor3 = Color3.new(1,1,1)
 turnBadge.Font = Enum.Font.GothamBold
 turnBadge.TextSize = 16
-turnBadge.Parent = turnContainer
+turnBadge.Parent = turnBox
 
-local turnTimerLabel = Instance.new("TextLabel")
-turnTimerLabel.Name = "TurnTimer"
-turnTimerLabel.Size = UDim2.new(1, -40, 0.5, 0)
-turnTimerLabel.Position = UDim2.new(0, 20, 0.5, 0)
-turnTimerLabel.BackgroundTransparency = 1
-turnTimerLabel.Text = "الوقت المتبقي: 30s"
-turnTimerLabel.TextColor3 = THEME.TextSecondary
-turnTimerLabel.Font = Enum.Font.Gotham
-turnTimerLabel.TextSize = 12
-turnTimerLabel.TextXAlignment = Enum.TextXAlignment.Left
-turnTimerLabel.Parent = turnContainer
+local badgeCorner = Instance.new("UICorner")
+badgeCorner.CornerRadius = UDim.new(0, 8)
+badgeCorner.Parent = turnBadge
 
-local resourcesContainer = Instance.new("Frame")
-resourcesContainer.Name = "ResourcesContainer"
-resourcesContainer.Size = UDim2.new(0.34, 0, 1, 0)
-resourcesContainer.Position = UDim2.new(0.33, 0, 0, 0)
-resourcesContainer.BackgroundTransparency = 1
-resourcesContainer.Parent = topHUD
+local turnText = Instance.new("TextLabel")
+turnText.Name = "Text"
+turnText.Size = UDim2.new(1, -70, 1, 0)
+turnText.Position = UDim2.new(0, 62, 0, 0)
+turnText.BackgroundTransparency = 1
+turnText.Text = "دورك الآن"
+turnText.TextColor3 = THEME.TextPrimary
+turnText.Font = Enum.Font.GothamBold
+turnText.TextSize = 18
+turnText.TextXAlignment = Enum.TextXAlignment.Left
+turnText.Parent = turnBox
 
-local resourceLabel = Instance.new("TextLabel")
-resourceLabel.Name = "ResourceLabel"
-resourceLabel.Size = UDim2.new(1, -20, 1, 0)
-resourceLabel.Position = UDim2.new(0, 10, 0, 0)
-resourceLabel.BackgroundTransparency = 1
-resourceLabel.Text = "🪙 0 | 🍖 0 | 🪵 0 | 🔮 0"
-resourceLabel.TextColor3 = THEME.TextSecondary
-resourceLabel.Font = Enum.Font.Gotham
-resourceLabel.TextSize = 16
-resourceLabel.TextXAlignment = Enum.TextXAlignment.Center
-resourceLabel.Parent = resourcesContainer
+local turnTimer = Instance.new("TextLabel")
+turnTimer.Name = "Timer"
+turnTimer.Size = UDim2.new(1, -70, 0, 20)
+turnTimer.Position = UDim2.new(0, 62, 1, -20)
+turnTimer.BackgroundTransparency = 1
+turnTimer.Text = "الوقت المتبقي: 30s"
+turnTimer.TextColor3 = THEME.TextMuted
+turnTimer.Font = Enum.Font.Gotham
+turnTimer.TextSize = 12
+turnTimer.TextXAlignment = Enum.TextXAlignment.Left
+turnTimer.Parent = turnBox
 
-local dominionContainer = Instance.new("Frame")
-dominionContainer.Name = "DominionContainer"
-dominionContainer.Size = UDim2.new(0.33, 0, 1, 0)
-dominionContainer.Position = UDim2.new(0.67, 0, 0, 0)
-dominionContainer.BackgroundTransparency = 1
-dominionContainer.Parent = topHUD
+local resBox = Instance.new("Frame")
+resBox.Name = "Resources"
+resBox.Size = UDim2.new(0.38, 0, 1, 0)
+resBox.Position = UDim2.new(0.31, 0, 0, 0)
+resBox.BackgroundTransparency = 1
+resBox.Parent = topBar
 
-local dominionLabel = Instance.new("TextLabel")
-dominionLabel.Name = "DominionLabel"
-dominionLabel.Size = UDim2.new(1, -20, 1, 0)
-dominionLabel.Position = UDim2.new(0, 10, 0, 0)
-dominionLabel.BackgroundTransparency = 1
-dominionLabel.Text = "السيطرة: 0%"
-dominionLabel.TextColor3 = THEME.TextPrimary
-dominionLabel.Font = Enum.Font.GothamBold
-dominionLabel.TextSize = 16
-dominionLabel.TextXAlignment = Enum.TextXAlignment.Right
-dominionLabel.Parent = dominionContainer
+local resLabel = Instance.new("TextLabel")
+resLabel.Name = "Label"
+resLabel.Size = UDim2.new(1, 0, 0.5, 0)
+resLabel.BackgroundTransparency = 1
+resLabel.Text = "الموارد"
+resLabel.TextColor3 = THEME.TextMuted
+resLabel.Font = Enum.Font.Gotham
+resLabel.TextSize = 13
+resLabel.TextXAlignment = Enum.TextXAlignment.Center
+resLabel.Parent = resBox
 
--- Power panel
-local powerPanel = Instance.new("Frame")
-powerPanel.Name = "PowerPanel"
-powerPanel.Size = UDim2.new(0.33, 0, 1, 0)
-powerPanel.Position = UDim2.new(0, 0, 0, 0)
-powerPanel.BackgroundTransparency = 1
-powerPanel.Parent = topHUD
+local resValue = Instance.new("TextLabel")
+resValue.Name = "Value"
+resValue.Size = UDim2.new(1, 0, 0.5, 0)
+resValue.Position = UDim2.new(0, 0, 0.5, 0)
+resValue.BackgroundTransparency = 1
+resValue.Text = "🪙 0  |  🍖 0  |  🪵 0  |  🔮 0"
+resValue.TextColor3 = THEME.TextPrimary
+resValue.Font = Enum.Font.GothamBold
+resValue.TextSize = 16
+resValue.TextXAlignment = Enum.TextXAlignment.Center
+resValue.Parent = resBox
 
-local powerLabel = Instance.new("TextLabel")
-powerLabel.Name = "PowerLabel"
-powerLabel.Size = UDim2.new(1, -20, 0.5, 0)
-powerLabel.Position = UDim2.new(0, 10, 0, 5)
-powerLabel.BackgroundTransparency = 1
-powerLabel.Text = "القوى: --"
-powerLabel.TextColor3 = THEME.TextSecondary
-powerLabel.Font = Enum.Font.Gotham
-powerLabel.TextSize = 14
-powerLabel.TextXAlignment = Enum.TextXAlignment.Left
-powerLabel.Parent = powerPanel
+local domBox = Instance.new("Frame")
+domBox.Name = "Dominion"
+domBox.Size = UDim2.new(0.3, 0, 1, 0)
+domBox.Position = UDim2.new(0.7, 0, 0, 0)
+domBox.BackgroundTransparency = 1
+domBox.Parent = topBar
 
-local powerCooldownLabel = Instance.new("TextLabel")
-powerCooldownLabel.Name = "PowerCooldown"
-powerCooldownLabel.Size = UDim2.new(1, -20, 0.5, 0)
-powerCooldownLabel.Position = UDim2.new(0, 10, 0.5, 0)
-powerCooldownLabel.BackgroundTransparency = 1
-powerCooldownLabel.Text = "التجديد: --"
-powerCooldownLabel.TextColor3 = THEME.Warning
-powerCooldownLabel.Font = Enum.Font.Gotham
-powerCooldownLabel.TextSize = 12
-powerCooldownLabel.TextXAlignment = Enum.TextXAlignment.Left
-powerCooldownLabel.Parent = powerPanel
+local domLabel = Instance.new("TextLabel")
+domLabel.Name = "Label"
+domLabel.Size = UDim2.new(1, 0, 0.5, 0)
+domLabel.BackgroundTransparency = 1
+domLabel.Text = "السيطرة"
+domLabel.TextColor3 = THEME.TextMuted
+domLabel.Font = Enum.Font.Gotham
+domLabel.TextSize = 13
+domLabel.TextXAlignment = Enum.TextXAlignment.Right
+domLabel.Parent = domBox
 
--- Event notification area
-local eventNotifyFrame = Instance.new("Frame")
-eventNotifyFrame.Name = "EventNotifyFrame"
-eventNotifyFrame.Size = UDim2.new(0, 300, 0, 60)
-eventNotifyFrame.Position = UDim2.new(0.5, -150, 0, 100)
-eventNotifyFrame.BackgroundColor3 = THEME.SurfaceElevated
-eventNotifyFrame.BorderSizePixel = 0
-eventNotifyFrame.Visible = false
-eventNotifyFrame.ZIndex = 20
-eventNotifyFrame.Parent = main
+local domValue = Instance.new("TextLabel")
+domValue.Name = "Value"
+domValue.Size = UDim2.new(1, 0, 0.5, 0)
+domValue.Position = UDim2.new(0, 0, 0.5, 0)
+domValue.BackgroundTransparency = 1
+domValue.Text = "0%"
+domValue.TextColor3 = THEME.TextPrimary
+domValue.Font = Enum.Font.GothamBold
+domValue.TextSize = 20
+domValue.TextXAlignment = Enum.TextXAlignment.Right
+domValue.Parent = domBox
 
-local eventCorner = Instance.new("UICorner")
-eventCorner.CornerRadius = UDim.new(0, 8)
-eventCorner.Parent = eventNotifyFrame
+-- Divider
+local divider = Instance.new("Frame")
+divider.Name = "Divider"
+divider.Size = UDim2.new(1, -40, 0, 1)
+divider.Position = UDim2.new(0, 20, 0, 96)
+divider.BackgroundColor3 = THEME.Border
+divider.BorderSizePixel = 0
+divider.Parent = hud
 
-local eventStroke = Instance.new("UIStroke")
-eventStroke.Color = THEME.Accent
-eventStroke.Thickness = 2
-eventStroke.Parent = eventNotifyFrame
-
-local eventIconLabel = Instance.new("TextLabel")
-eventIconLabel.Name = "EventIcon"
-eventIconLabel.Size = UDim2.new(0, 50, 1, 0)
-eventIconLabel.Position = UDim2.new(0, 10, 0, 0)
-eventIconLabel.BackgroundTransparency = 1
-eventIconLabel.Text = "☄️"
-eventIconLabel.TextColor3 = THEME.TextPrimary
-eventIconLabel.Font = Enum.Font.GothamBold
-eventIconLabel.TextSize = 32
-eventIconLabel.Parent = eventNotifyFrame
-
-local eventTextLabel = Instance.new("TextLabel")
-eventTextLabel.Name = "EventText"
-eventTextLabel.Size = UDim2.new(1, -70, 1, 0)
-eventTextLabel.Position = UDim2.new(0, 70, 0, 0)
-eventTextLabel.BackgroundTransparency = 1
-eventTextLabel.Text = "حدث عالمي نشط!"
-eventTextLabel.TextColor3 = THEME.TextPrimary
-eventTextLabel.Font = Enum.Font.GothamBold
-eventTextLabel.TextSize = 18
-eventTextLabel.TextXAlignment = Enum.TextXAlignment.Left
-eventTextLabel.Parent = eventNotifyFrame
-
--- ============================================================
--- BOARD AREA
--- ============================================================
+-- Board area
 local boardArea = Instance.new("Frame")
 boardArea.Name = "BoardArea"
-boardArea.Size = UDim2.new(1, 0, 1, -140)
-boardArea.Position = UDim2.new(0, 0, 0, 90)
+boardArea.Size = UDim2.new(1, 0, 1, -170)
+boardArea.Position = UDim2.new(0, 0, 0, 100)
 boardArea.BackgroundTransparency = 1
-boardArea.Visible = false
-boardArea.Parent = main
+boardArea.Parent = hud
 
 local gridContainer = Instance.new("Frame")
-gridContainer.Name = "GridContainer"
-gridContainer.Size = UDim2.new(0, 600, 0, 600)
-gridContainer.Position = UDim2.new(0.5, -300, 0.5, -300)
+gridContainer.Name = "Grid"
+gridContainer.Size = UDim2.new(0, 620, 0, 620)
+gridContainer.Position = UDim2.new(0.5, -310, 0.5, -310)
 gridContainer.BackgroundTransparency = 1
 gridContainer.Parent = boardArea
 
 local gridLayout = Instance.new("UIGridLayout")
-gridLayout.Name = "GridLayout"
-gridLayout.CellSize = UDim2.new(0, 50, 0, 50)
-gridLayout.CellPadding = UDim2.new(0, 2, 0, 2)
+gridLayout.Name = "Layout"
+gridLayout.CellSize = UDim2.new(0, 52, 0, 52)
+gridLayout.CellPadding = UDim2.new(0, 4, 0, 4)
 gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
 gridLayout.Parent = gridContainer
 
--- ============================================================
--- INSPECTOR PANEL
--- ============================================================
+-- Inspector panel (right side)
 local inspector = Instance.new("Frame")
 inspector.Name = "Inspector"
-inspector.Size = UDim2.new(0, 300, 1, -90)
-inspector.Position = UDim2.new(1, 0, 0, 90)
-inspector.BackgroundColor3 = THEME.SurfaceElevated
+inspector.Size = UDim2.new(0, 320, 1, -120)
+inspector.Position = UDim2.new(1, -320, 0, 90)
+inspector.BackgroundColor3 = THEME.SurfaceElev
 inspector.BorderSizePixel = 0
 inspector.Visible = false
-inspector.Parent = main
+inspector.Parent = hud
 
-local inspectorLine = Instance.new("Frame")
-inspectorLine.Size = UDim2.new(0, 2, 1, 0)
-inspectorLine.Position = UDim2.new(0, 0, 0, 0)
-inspectorLine.BackgroundColor3 = THEME.Accent
-inspectorLine.BorderSizePixel = 0
-inspectorLine.Parent = inspector
+local insCorner = Instance.new("UICorner")
+insCorner.CornerRadius = UDim.new(0, 16)
+insCorner.Parent = inspector
 
-local inspectorTitle = Instance.new("TextLabel")
-inspectorTitle.Name = "Title"
-inspectorTitle.Size = UDim2.new(1, -20, 0, 40)
-inspectorTitle.Position = UDim2.new(0, 10, 0, 10)
-inspectorTitle.BackgroundTransparency = 1
-inspectorTitle.Text = "تفاصيل الخلية"
-inspectorTitle.TextColor3 = THEME.TextPrimary
-inspectorTitle.Font = Enum.Font.GothamBold
-inspectorTitle.TextSize = 18
-inspectorTitle.TextXAlignment = Enum.TextXAlignment.Left
-inspectorTitle.Parent = inspector
+local insStroke = Instance.new("UIStroke")
+insStroke.Color = THEME.Border
+insStroke.Thickness = 1
+insStroke.Parent = inspector
 
-local inspectorContent = Instance.new("ScrollingFrame")
-inspectorContent.Name = "Content"
-inspectorContent.Size = UDim2.new(1, -20, 1, -60)
-inspectorContent.Position = UDim2.new(0, 10, 0, 55)
-inspectorContent.BackgroundTransparency = 1
-inspectorContent.BorderSizePixel = 0
-inspectorContent.ScrollBarThickness = 4
-inspectorContent.AutomaticCanvasSize = Enum.AutomaticSize.Y
-inspectorContent.Parent = inspector
+local insHeader = Instance.new("Frame")
+insHeader.Name = "Header"
+insHeader.Size = UDim2.new(1, 0, 0, 56)
+insHeader.BackgroundTransparency = 1
+insHeader.Parent = inspector
 
-local inspectorList = Instance.new("UIListLayout")
-inspectorList.Padding = UDim2.new(0, 0, 0, 8)
-inspectorList.SortOrder = Enum.SortOrder.LayoutOrder
-inspectorList.Parent = inspectorContent
+local insClose = Instance.new("TextButton")
+insClose.Name = "Close"
+insClose.Size = UDim2.new(0, 32, 0, 32)
+insClose.Position = UDim2.new(1, -40, 0.5, -16)
+insClose.BackgroundColor3 = THEME.Danger
+insClose.BorderSizePixel = 0
+insClose.Text = "✕"
+insClose.TextColor3 = Color3.new(1,1,1)
+insClose.Font = Enum.Font.GothamBold
+insClose.TextSize = 18
+insClose.AutoButtonColor = false
+insClose.Parent = insHeader
 
-local closeInspector = Instance.new("TextButton")
-closeInspector.Name = "Close"
-closeInspector.Size = UDim2.new(0, 30, 0, 30)
-closeInspector.Position = UDim2.new(1, -40, 0, 10)
-closeInspector.BackgroundColor3 = THEME.Danger
-closeInspector.BorderSizePixel = 0
-closeInspector.Text = "✕"
-closeInspector.TextColor3 = Color3.new(1, 1, 1)
-closeInspector.Font = Enum.Font.GothamBold
-closeInspector.TextSize = 18
-closeInspector.Parent = inspector
+local insCloseCorner = Instance.new("UICorner")
+insCloseCorner.CornerRadius = UDim.new(0, 8)
+insCloseCorner.Parent = insClose
 
--- ============================================================
--- BOTTOM ACTION BAR
--- ============================================================
+local insTitle = Instance.new("TextLabel")
+insTitle.Name = "Title"
+insTitle.Size = UDim2.new(1, -70, 1, 0)
+insTitle.BackgroundTransparency = 1
+insTitle.Text = "تفاصيل الخلية"
+insTitle.TextColor3 = THEME.TextPrimary
+insTitle.Font = Enum.Font.GothamBold
+insTitle.TextSize = 17
+insTitle.TextXAlignment = Enum.TextXAlignment.Left
+insTitle.Parent = insHeader
+
+local insContent = Instance.new("ScrollingFrame")
+insContent.Name = "Content"
+insContent.Size = UDim2.new(1, -24, 1, -70)
+insContent.Position = UDim2.new(0, 12, 0, 62)
+insContent.BackgroundTransparency = 1
+insContent.BorderSizePixel = 0
+insContent.ScrollBarThickness = 3
+insContent.AutomaticCanvasSize = Enum.AutomaticSize.Y
+insContent.Parent = inspector
+
+local insLayout = Instance.new("UIListLayout")
+insLayout.Padding = UDim2.new(0, 0, 0, 10)
+insLayout.SortOrder = Enum.SortOrder.LayoutOrder
+insLayout.Parent = insContent
+
+-- Bottom bar
 local bottomBar = Instance.new("Frame")
 bottomBar.Name = "BottomBar"
-bottomBar.Size = UDim2.new(1, 0, 0, 50)
-bottomBar.Position = UDim2.new(0, 0, 1, -50)
+bottomBar.Size = UDim2.new(1, -40, 0, 64)
+bottomBar.Position = UDim2.new(0, 20, 1, -80)
 bottomBar.BackgroundColor3 = THEME.Surface
 bottomBar.BorderSizePixel = 0
 bottomBar.Visible = false
-bottomBar.Parent = main
+bottomBar.Parent = hud
 
-local bottomBarLine = Instance.new("Frame")
-bottomBarLine.Size = UDim2.new(1, 0, 0, 2)
-bottomBarLine.Position = UDim2.new(0, 0, 0, 0)
-bottomBarLine.BackgroundColor3 = THEME.Accent
-bottomBarLine.BorderSizePixel = 0
-bottomBarLine.Parent = bottomBar
+local barCorner = Instance.new("UICorner")
+barCorner.CornerRadius = UDim.new(0, 16)
+barCorner.Parent = bottomBar
+
+local barStroke = Instance.new("UIStroke")
+barStroke.Color = THEME.Border
+barStroke.Thickness = 1
+barStroke.Parent = bottomBar
 
 local colorLabel = Instance.new("TextLabel")
 colorLabel.Name = "ColorLabel"
-colorLabel.Size = UDim2.new(0, 100, 1, 0)
-colorLabel.Position = UDim2.new(0, 10, 0, 0)
+colorLabel.Size = UDim2.new(0, 110, 1, 0)
 colorLabel.BackgroundTransparency = 1
 colorLabel.Text = "اختر لون:"
 colorLabel.TextColor3 = THEME.TextSecondary
 colorLabel.Font = Enum.Font.GothamBold
-colorLabel.TextSize = 14
+colorLabel.TextSize = 15
 colorLabel.TextXAlignment = Enum.TextXAlignment.Left
 colorLabel.Parent = bottomBar
 
 local colorFrame = Instance.new("Frame")
-colorFrame.Name = "ColorFrame"
-colorFrame.Size = UDim2.new(1, -420, 1, 0)
-colorFrame.Position = UDim2.new(0, 120, 0, 0)
+colorFrame.Name = "Colors"
+colorFrame.Size = UDim2.new(1, -440, 1, 0)
+colorFrame.Position = UDim2.new(0, 130, 0, 0)
 colorFrame.BackgroundTransparency = 1
 colorFrame.Parent = bottomBar
 
 local colorLayout = Instance.new("UIGridLayout")
-colorLayout.Name = "ColorLayout"
-colorLayout.CellSize = UDim2.new(0, 60, 0, 44)
+colorLayout.Name = "Layout"
+colorLayout.CellSize = UDim2.new(0, 56, 0, 44)
 colorLayout.CellPadding = UDim2.new(0, 8, 0, 0)
 colorLayout.FillDirection = Enum.FillDirection.Horizontal
 colorLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 colorLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 colorLayout.Parent = colorFrame
 
--- Power buttons
 local powerFrame = Instance.new("Frame")
-powerFrame.Name = "PowerFrame"
-powerFrame.Size = UDim2.new(0, 200, 1, 0)
-powerFrame.Position = UDim2.new(0, 340, 0, 0)
+powerFrame.Name = "Powers"
+powerFrame.Size = UDim2.new(0, 220, 1, 0)
+powerFrame.Position = UDim2.new(1, -220, 0, 0)
 powerFrame.BackgroundTransparency = 1
 powerFrame.Parent = bottomBar
 
 local powerLayout = Instance.new("UIGridLayout")
-powerLayout.Name = "PowerLayout"
-powerLayout.CellSize = UDim2.new(0, 55, 0, 44)
-powerLayout.CellPadding = UDim2.new(0, 6, 0, 0)
+powerLayout.Name = "Layout"
+powerLayout.CellSize = UDim2.new(0, 52, 0, 44)
+powerLayout.CellPadding = UDim2.new(0, 8, 0, 0)
 powerLayout.FillDirection = Enum.FillDirection.Horizontal
 powerLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 powerLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 powerLayout.Parent = powerFrame
 
-local powerButtons = {}
+local powerLabel = Instance.new("TextLabel")
+powerLabel.Name = "Label"
+powerLabel.Size = UDim2.new(0, 70, 1, 0)
+powerLabel.BackgroundTransparency = 1
+powerLabel.Text = "القوى:"
+powerLabel.TextColor3 = THEME.TextSecondary
+powerLabel.Font = Enum.Font.GothamBold
+powerLabel.TextSize = 13
+powerLabel.TextXAlignment = Enum.TextXAlignment.Left
+powerLabel.Parent = bottomBar
+powerLabel.Position = UDim2.new(1, -290, 0, 0)
 
 -- ============================================================
--- HELPER FUNCTIONS
+-- OVERLAYS
 -- ============================================================
-local function colorForOwner(owner)
-    return TEAM_COLORS[owner] or THEME.Neutral
+-- Event notification
+local eventBox = Instance.new("Frame")
+eventBox.Name = "EventBox"
+eventBox.Size = UDim2.new(0, 340, 0, 70)
+eventBox.Position = UDim2.new(0.5, -170, 0, 30)
+eventBox.BackgroundColor3 = THEME.SurfaceElev
+eventBox.BorderSizePixel = 0
+eventBox.Visible = false
+eventBox.ZIndex = 50
+eventBox.Parent = main
+
+local eventCorner = Instance.new("UICorner")
+eventCorner.CornerRadius = UDim.new(0, 12)
+eventCorner.Parent = eventBox
+
+local eventStroke = Instance.new("UIStroke")
+eventStroke.Color = THEME.Accent
+eventStroke.Thickness = 2
+eventStroke.Parent = eventBox
+
+local eventIcon = Instance.new("TextLabel")
+eventIcon.Name = "Icon"
+eventIcon.Size = UDim2.new(0, 44, 0, 44)
+eventIcon.Position = UDim2.new(0, 14, 0.5, -22)
+eventIcon.BackgroundTransparency = 1
+eventIcon.Text = "☄️"
+eventIcon.TextColor3 = THEME.TextPrimary
+eventIcon.Font = Enum.Font.GothamBold
+eventIcon.TextSize = 28
+eventIcon.Parent = eventBox
+
+local eventText = Instance.new("TextLabel")
+eventText.Name = "Text"
+eventText.Size = UDim2.new(1, -70, 1, 0)
+eventText.Position = UDim2.new(0, 66, 0, 0)
+eventText.BackgroundTransparency = 1
+eventText.Text = "حدث عالمي نشط!"
+eventText.TextColor3 = THEME.TextPrimary
+eventText.Font = Enum.Font.GothamBold
+eventText.TextSize = 17
+eventText.TextXAlignment = Enum.TextXAlignment.Left
+eventText.Parent = eventBox
+
+-- Game over overlay
+local gameOverBox = Instance.new("Frame")
+gameOverBox.Name = "GameOver"
+gameOverBox.Size = UDim2.new(1, 0, 1, 0)
+gameOverBox.Position = UDim2.new(0, 0, 0, 0)
+gameOverBox.BackgroundColor3 = Color3.new(0, 0, 0)
+gameOverBox.BackgroundTransparency = 0.55
+gameOverBox.Visible = false
+gameOverBox.ZIndex = 100
+gameOverBox.Parent = main
+
+local goCard = Instance.new("Frame")
+goCard.Name = "Card"
+goCard.Size = UDim2.new(0, 420, 0, 260)
+goCard.Position = UDim2.new(0.5, -210, 0.5, -130)
+goCard.BackgroundColor3 = THEME.SurfaceElev
+goCard.BorderSizePixel = 0
+goCard.Parent = gameOverBox
+
+local goCorner = Instance.new("UICorner")
+goCorner.CornerRadius = UDim.new(0, 20)
+goCorner.Parent = goCard
+
+local goStroke = Instance.new("UIStroke")
+goStroke.Color = THEME.Border
+goStroke.Thickness = 2
+goStroke.Parent = goCard
+
+local goIcon = Instance.new("TextLabel")
+goIcon.Name = "Icon"
+goIcon.Size = UDim2.new(1, 0, 0, 80)
+goIcon.BackgroundTransparency = 1
+goIcon.Text = "🏆"
+goIcon.TextColor3 = THEME.Gold
+goIcon.Font = Enum.Font.GothamBold
+goIcon.TextSize = 60
+goIcon.Parent = goCard
+
+local goTitle = Instance.new("TextLabel")
+goTitle.Name = "Title"
+goTitle.Size = UDim2.new(1, 0, 0, 32)
+goTitle.Position = UDim2.new(0, 0, 0, 86)
+goTitle.BackgroundTransparency = 1
+goTitle.Text = "انتهت المباراة!"
+goTitle.TextColor3 = THEME.TextPrimary
+goTitle.Font = Enum.Font.GothamBold
+goTitle.TextSize = 26
+goTitle.TextXAlignment = Enum.TextXAlignment.Center
+goTitle.Parent = goCard
+
+local goWinner = Instance.new("TextLabel")
+goWinner.Name = "Winner"
+goWinner.Size = UDim2.new(1, 0, 0, 28)
+goWinner.Position = UDim2.new(0, 0, 0, 120)
+goWinner.BackgroundTransparency = 1
+goWinner.Text = "الفائز: Player"
+goWinner.TextColor3 = THEME.Success
+goWinner.Font = Enum.Font.GothamBold
+goWinner.TextSize = 20
+goWinner.TextXAlignment = Enum.TextXAlignment.Center
+goWinner.Parent = goCard
+
+local goBtn = Instance.new("TextButton")
+goBtn.Name = "Restart"
+goBtn.Size = UDim2.new(0, 200, 0, 48)
+goBtn.Position = UDim2.new(0.5, -100, 0, 170)
+goBtn.BackgroundColor3 = THEME.Accent
+goBtn.BorderSizePixel = 0
+goBtn.Text = "العب مرة أخرى"
+goBtn.TextColor3 = Color3.new(1, 1, 1)
+goBtn.Font = Enum.Font.GothamBold
+goBtn.TextSize = 17
+goBtn.AutoButtonColor = false
+goBtn.Parent = goCard
+
+local goBtnCorner = Instance.new("UICorner")
+goBtnCorner.CornerRadius = UDim.new(0, 12)
+goBtnCorner.Parent = goBtn
+
+local goBtnStroke = Instance.new("UIStroke")
+goBtnStroke.Color = THEME.Accent
+goBtnStroke.Thickness = 1
+goBtnStroke.Parent = goBtn
+
+-- ============================================================
+-- UI STATE
+-- ============================================================
+local powerButtons = {}
+local cellSize = 52
+local mapGridSize = 10
+
+-- ============================================================
+-- UI FUNCTIONS
+-- ============================================================
+local function setBtnHover(btn, normalColor, hoverColor)
+    btn.MouseEnter:Connect(function()
+        tween(btn, {BackgroundColor3 = hoverColor}, 0.2)
+        ripple(btn)
+    end)
+    btn.MouseLeave:Connect(function()
+        tween(btn, {BackgroundColor3 = normalColor}, 0.2)
+    end)
 end
 
-local function getDominionPercentage(data)
-    local playerCount = 0
-    local total = #data
+local function updateLobbyUI(data)
+    -- Clear list
+    for _, c in ipairs(playersList:GetChildren()) do
+        if c:IsA("Frame") then c:Destroy() end
+    end
+
+    for _, pInfo in ipairs(data.players) do
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, -10, 0, 40)
+        row.BackgroundColor3 = THEME.Surface
+        row.BorderSizePixel = 0
+        row.Parent = playersList
+
+        local rc = Instance.new("UICorner")
+        rc.CornerRadius = UDim.new(0, 10)
+        rc.Parent = row
+
+        local rs = Instance.new("UIStroke")
+        rs.Color = THEME.Border
+        rs.Thickness = 1
+        rs.Parent = row
+
+        local nameLbl = Instance.new("TextLabel")
+        nameLbl.Size = UDim2.new(0.55, 0, 1, 0)
+        nameLbl.Position = UDim2.new(0, 12, 0, 0)
+        nameLbl.BackgroundTransparency = 1
+        nameLbl.Text = pInfo.playerName
+        nameLbl.TextColor3 = THEME.TextPrimary
+        nameLbl.Font = Enum.Font.GothamBold
+        nameLbl.TextSize = 14
+        nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+        nameLbl.Parent = row
+
+        local teamLbl = Instance.new("TextLabel")
+        teamLbl.Size = UDim2.new(0.25, 0, 1, 0)
+        teamLbl.Position = UDim2.new(0.55, 0, 0, 0)
+        teamLbl.BackgroundTransparency = 1
+        teamLbl.Text = pInfo.team
+        teamLbl.TextColor3 = colorForOwner(pInfo.team)
+        teamLbl.Font = Enum.Font.GothamBold
+        teamLbl.TextSize = 12
+        teamLbl.TextXAlignment = Enum.TextXAlignment.Center
+        teamLbl.Parent = row
+
+        local statusLbl = Instance.new("TextLabel")
+        statusLbl.Size = UDim2.new(0.2, 0, 1, 0)
+        statusLbl.Position = UDim2.new(0.8, 0, 0, 0)
+        statusLbl.BackgroundTransparency = 1
+        statusLbl.Text = pInfo.ready and "جاهز" أو "غير جاهز"
+        statusLbl.TextColor3 = pInfo.ready and THEME.Success or THEME.Warning
+        statusLbl.Font = Enum.Font.Gotham
+        statusLbl.TextSize = 11
+        statusLbl.TextXAlignment = Enum.TextXAlignment.Right
+        statusLbl.Parent = row
+    end
+
+    -- My team
+    local myInfo = nil
+    for _, pInfo in ipairs(data.players) do
+        if pInfo.userId == player.UserId then myInfo = pInfo break end
+    end
+
+    if myInfo then
+        myTeam = myInfo.team
+        myTeamLabel.Text = "فريقك: " .. (TEAM_NAMES_AR[myTeam] or myTeam)
+        myTeamLabel.TextColor3 = colorForOwner(myTeam)
+        readyBtn.Visible = true
+        startBtn.Visible = (#data.players >= 1 and data.canStart)
+        readyBtn.Text = myInfo.ready and "إلغاء جاهزية" or "جاهز"
+        readyBtn.BackgroundColor3 = myInfo.ready and THEME.Warning or THEME.Success
+        readyStroke.Color = readyBtn.BackgroundColor3
+    else
+        myTeam = nil
+        myTeamLabel.Text = "فريقك: غير محدد"
+        myTeamLabel.TextColor3 = THEME.TextSecondary
+        readyBtn.Visible = false
+        startBtn.Visible = false
+    end
+end
+
+local function setupSizeButtons()
+    for _, c in ipairs(sizeRow:GetChildren()) do
+        if c:IsA("TextButton") then c:Destroy() end
+    end
+    for _, sz in ipairs(MapData.AvailableSizes) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0, 88, 0, 34)
+        btn.BackgroundColor3 = THEME.Surface
+        btn.BorderSizePixel = 0
+        btn.Text = tostring(sz) .. "×" .. tostring(sz)
+        btn.TextColor3 = THEME.TextPrimary
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 13
+        btn.AutoButtonColor = false
+        btn.Parent = sizeRow
+
+        local bc = Instance.new("UICorner")
+        bc.CornerRadius = UDim.new(0, 10)
+        bc.Parent = btn
+
+        local bs = Instance.new("UIStroke")
+        bs.Color = THEME.Border
+        bs.Thickness = 1
+        bs.Parent = btn
+
+        setBtnHover(btn, THEME.Surface, THEME.SurfaceGlow)
+
+        btn.MouseButton1Click:Connect(function()
+            SetMapSize:FireServer(sz)
+            sizeLabel.Text = "حجم الخريطة: " .. sz .. "×" .. sz
+            for _, b in ipairs(sizeRow:GetChildren()) do
+                if b:IsA("TextButton") then
+                    tween(b, {BackgroundColor3 = THEME.Surface}, 0.2)
+                    b.UIStroke.Color = THEME.Border
+                end
+            end
+            tween(btn, {BackgroundColor3 = THEME.Accent}, 0.2)
+            btn.UIStroke.Color = THEME.Accent
+        end)
+    end
+end
+
+setupSizeButtons()
+
+local function buildMap(data)
+    local newSize = math.sqrt(#data)
+    local newCell = math.clamp(600 / newSize, 24, 60)
+
+    if newSize ~= mapGridSize then
+        mapGridSize = newSize
+        cellSize = newCell
+        gridLayout.CellSize = UDim2.new(0, cellSize, 0, cellSize)
+        local total = cellSize * mapGridSize + 4 * (mapGridSize - 1)
+        gridContainer.Size = UDim2.new(0, total, 0, total)
+        gridContainer.Position = UDim2.new(0.5, -total / 2, 0.5, -total / 2)
+    end
+
+    local pct = getDominionPercentage(data)
+    domValue.Text = pct .. "%"
+
     for _, cell in ipairs(data) do
-        if cell.owner == myTeam then
-            playerCount = playerCount + 1
+        local btn = cellButtons[cell.id]
+
+        if not btn then
+            btn = Instance.new("TextButton")
+            btn.Name = cell.id
+            btn.Size = UDim2.new(0, cellSize, 0, cellSize)
+            btn.BackgroundColor3 = colorForOwner(cell.owner)
+            btn.BorderSizePixel = 0
+            btn.AutoButtonColor = false
+            btn.Font = Enum.Font.GothamBold
+            btn.TextSize = math.clamp(16, 10, 20)
+            btn.Text = TERRAIN_SYMBOLS[cell.terrainType] or "?"
+            btn.TextColor3 = Color3.new(1, 1, 1)
+            btn.Parent = gridContainer
+
+            local c = Instance.new("UICorner")
+            c.CornerRadius = UDim.new(0, 10)
+            c.Parent = btn
+
+            local s = Instance.new("UIStroke")
+            s.Color = THEME.Border
+            s.Thickness = 1.5
+            s.Parent = btn
+
+            cellButtons[cell.id] = btn
+            btn:SetAttribute("Owner", cell.owner)
+            btn:SetAttribute("Terrain", cell.terrainType or "Plains")
+
+            btn.MouseEnter:Connect(function()
+                if btn:GetAttribute("Owner") ~= myTeam then
+                    tween(btn, {BackgroundColor3 = colorForOwner(cell.owner):Lerp(Color3.new(1,1,1), 0.25)}, 0.15)
+                end
+            end)
+            btn.MouseLeave:Connect(function()
+                tween(btn, {BackgroundColor3 = colorForOwner(cell.owner)}, 0.15)
+            end)
+            btn.MouseButton1Click:Connect(function()
+                showInspector(cell)
+            end)
+        else
+            local prevOwner = btn:GetAttribute("Owner")
+            local prevTerrain = btn:GetAttribute("Terrain")
+
+            if prevOwner ~= cell.owner then
+                -- Capture flash
+                local flash = colorForOwner(cell.owner)
+                tween(btn, {BackgroundColor3 = flash}, 0.05)
+                task.delay(0.05, function()
+                    if btn and btn.Parent then
+                        tween(btn, {BackgroundColor3 = colorForOwner(cell.owner)}, 0.2)
+                    end
+                end)
+                btn:SetAttribute("Owner", cell.owner)
+            end
+
+            if prevTerrain ~= (cell.terrainType or "Plains") then
+                btn.Text = TERRAIN_SYMBOLS[cell.terrainType] or "?"
+                btn:SetAttribute("Terrain", cell.terrainType or "Plains")
+            end
         end
     end
-    return math.floor((playerCount / total) * 100)
-end
-
-local function tweenObject(obj, props, duration, easingStyle, easingDir)
-    duration = duration or 0.3
-    easingStyle = easingStyle or Enum.EasingStyle.Quad
-    easingDir = easingDir or Enum.EasingDirection.Out
-    local tween = TweenService:Create(obj, TweenInfo.new(duration, easingStyle, easingDir), props)
-    tween:Play()
-    return tween
 end
 
 local function showInspector(cellData)
     if not cellData then return end
     selectedCellId = cellData.id
-    
+
     local owner = cellData.owner or "Neutral"
-    local terrainType = cellData.terrainType or "Plains"
-    local terrainName = TERRAIN_NAMES_AR[terrainType] or terrainType
-    local symbol = TERRAIN_SYMBOLS[terrainType] or "?"
-    
-    inspectorTitle.Text = symbol .. " " .. terrainName
-    
-    for _, child in ipairs(inspectorContent:GetChildren()) do
-        if child:IsA("TextLabel") or child:IsA("Frame") then
-            child:Destroy()
-        end
+    local terrain = cellData.terrainType or "Plains"
+    local tName = TERRAIN_NAMES_AR[terrain] or terrain
+    local symbol = TERRAIN_SYMBOLS[terrain] or "?"
+
+    insTitle.Text = symbol .. "  " .. tName
+
+    for _, c in ipairs(insContent:GetChildren()) do
+        if c:IsA("Frame") then c:Destroy() end
     end
-    
-    local function addRow(labelText, valueText, valueColor)
+
+    local function addRow(label, value, vColor)
         local row = Instance.new("Frame")
-        row.Size = UDim2.new(1, 0, 0, 24)
+        row.Size = UDim2.new(1, 0, 0, 30)
         row.BackgroundTransparency = 1
-        row.Parent = inspectorContent
-        
-        local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.new(0.5, 0, 1, 0)
-        lbl.BackgroundTransparency = 1
-        lbl.Text = labelText
-        lbl.TextColor3 = THEME.TextSecondary
-        lbl.Font = Enum.Font.Gotham
-        lbl.TextSize = 14
-        lbl.TextXAlignment = Enum.TextXAlignment.Left
-        lbl.Parent = row
-        
-        local val = Instance.new("TextLabel")
-        val.Size = UDim2.new(0.5, 0, 1, 0)
-        val.Position = UDim2.new(0.5, 0, 0, 0)
-        val.BackgroundTransparency = 1
-        val.Text = valueText
-        val.TextColor3 = valueColor or THEME.TextPrimary
-        val.Font = Enum.Font.GothamBold
-        val.TextSize = 14
-        val.TextXAlignment = Enum.TextXAlignment.Right
-        val.Parent = row
+        row.Parent = insContent
+
+        local l = Instance.new("TextLabel")
+        l.Size = UDim2.new(0.45, 0, 1, 0)
+        l.BackgroundTransparency = 1
+        l.Text = label
+        l.TextColor3 = THEME.TextMuted
+        l.Font = Enum.Font.Gotham
+        l.TextSize = 13
+        l.TextXAlignment = Enum.TextXAlignment.Left
+        l.Parent = row
+
+        local v = Instance.new("TextLabel")
+        v.Size = UDim2.new(0.55, 0, 1, 0)
+        v.Position = UDim2.new(0.45, 0, 0, 0)
+        v.BackgroundTransparency = 1
+        v.Text = value
+        v.TextColor3 = vColor or THEME.TextPrimary
+        v.Font = Enum.Font.GothamBold
+        v.TextSize = 13
+        v.TextXAlignment = Enum.TextXAlignment.Right
+        v.Parent = row
     end
-    
+
     addRow("المالك:", owner, colorForOwner(owner))
-    addRow("نوع الأرضية:", terrainName, THEME.Accent)
+    addRow("نوع الأرضية:", tName, THEME.Accent)
     addRow("القيمة الاستراتيجية:", tostring(cellData.strategicValue or 1), THEME.TextPrimary)
-    
+
     local defPct = math.floor((cellData.defenseModifier or 0) * 100)
-    addRow("معدل الدفاع:", defPct .. "%", defPct > 0 and THEME.Success or THEME.TextSecondary)
-    
+    addRow("معدل الدفاع:", defPct .. "%", defPct > 0 and THEME.Success or THEME.TextMuted)
+
     local prod = cellData.productionPerTurn or {}
     local prodStr = ""
-    for resType, amount in pairs(prod) do
-        if prodStr ~= "" then prodStr = prodStr .. " | " end
-        local resIcon = {Gold = "🪙", Food = "🍖", Wood = "🪵", Relic = "🔮"}[resType] or ""
-        prodStr = prodStr .. resIcon .. resType .. " +" .. amount
+    for rt, amt in pairs(prod) do
+        if prodStr ~= "" then prodStr = prodStr .. "  |  " end
+        local ico = {Gold="🪙", Food="🍖", Wood="🪵", Relic="🔮"}[rt] or ""
+        prodStr = prodStr .. ico .. rt .. " +" .. amt
     end
     if prodStr ~= "" then
         addRow("الإنتاج لكل دور:", prodStr, THEME.Success)
     end
-    
+
+    local by = cellData.baseYield or {}
+    local byStr = ""
+    for rt, amt in pairs(by) do
+        if byStr ~= "" then byStr = byStr .. "  |  " end
+        local ico = {Gold="🪙", Food="🍖", Wood="🪵", Relic="🔮"}[rt] or ""
+        byStr = byStr .. ico .. rt .. " +" .. amt
+    end
+    if byStr ~= "" then
+        addRow("مكافأة الاحتجاز:", byStr, THEME.Warning)
+    end
+
     inspector.Visible = true
-    tweenObject(inspector, {Position = UDim2.new(1, -300, 0, 90)}, 0.3)
+    inspector.Position = UDim2.new(1, 0, 0, 90)
+    tween(inspector, {Position = UDim2.new(1, -320, 0, 90)}, 0.3)
 end
 
 local function hideInspector()
     if not selectedCellId then return end
-    tweenObject(inspector, {Position = UDim2.new(1, 0, 0, 90)}, 0.3)
+    tween(inspector, {Position = UDim2.new(1, 0, 0, 90)}, 0.3)
     task.delay(0.3, function()
         if inspector and inspector.Position == UDim2.new(1, 0, 0, 90) then
             inspector.Visible = false
@@ -634,179 +1124,10 @@ local function hideInspector()
     selectedCellId = nil
 end
 
--- ============================================================
--- LOBBY UI
--- ============================================================
-local function updateLobbyUI(data)
-    -- Clear players list
-    for _, child in ipairs(lobbyPlayersList:GetChildren()) do
-        if child:IsA("TextLabel") or child:IsA("Frame") then
-            child:Destroy()
-        end
-    end
-    
-    -- Add players
-    for _, pInfo in ipairs(data.players) do
-        local row = Instance.new("Frame")
-        row.Size = UDim2.new(1, -10, 0, 24)
-        row.BackgroundColor3 = THEME.SurfaceElevated
-        row.BorderSizePixel = 0
-        row.Parent = lobbyPlayersList
-        
-        local rowCorner = Instance.new("UICorner")
-        rowCorner.CornerRadius = UDim.new(0, 6)
-        rowCorner.Parent = row
-        
-        local nameLabel = Instance.new("TextLabel")
-        nameLabel.Size = UDim2.new(0.6, 0, 1, 0)
-        nameLabel.Position = UDim2.new(0, 8, 0, 0)
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.Text = pInfo.playerName .. " (" .. pInfo.team .. ")"
-        nameLabel.TextColor3 = THEME.TextPrimary
-        nameLabel.Font = Enum.Font.Gotham
-        nameLabel.TextSize = 14
-        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-        nameLabel.Parent = row
-        
-        local statusLabel = Instance.new("TextLabel")
-        statusLabel.Size = UDim2.new(0.3, 0, 1, 0)
-        statusLabel.Position = UDim2.new(0.7, 0, 0, 0)
-        statusLabel.BackgroundTransparency = 1
-        statusLabel.Text = pInfo.ready and "جاهز" or "غير جاهز"
-        statusLabel.TextColor3 = pInfo.ready and THEME.Success or THEME.Warning
-        statusLabel.Font = Enum.Font.Gotham
-        statusLabel.TextSize = 12
-        statusLabel.TextXAlignment = Enum.TextXAlignment.Right
-        statusLabel.Parent = row
-    end
-    
-    -- Update my team
-    local myInfo = nil
-    for _, pInfo in ipairs(data.players) do
-        if pInfo.userId == player.UserId then
-            myInfo = pInfo
-            break
-        end
-    end
-    
-    if myInfo then
-        myTeam = myInfo.team
-        myTeamLabel.Text = "فريقك: " .. myTeam
-        myTeamLabel.TextColor3 = colorForOwner(myTeam)
-        readyButton.Visible = true
-        startButton.Visible = (#data.players >= 1 and data.canStart)
-    else
-        myTeam = nil
-        myTeamLabel.Text = "فريقك: غير محدد"
-        readyButton.Visible = false
-        startButton.Visible = false
-    end
-    
-    -- Ready button state
-    if myInfo then
-        readyButton.Text = myInfo.ready and "إلغاء तैयارية" or "جاهز"
-        readyButton.BackgroundColor3 = myInfo.ready and THEME.Warning or THEME.Success
-    end
-    
-    lobbyPanel.Visible = true
-    topHUD.Visible = false
-    boardArea.Visible = false
-    bottomBar.Visible = false
-end
-
--- ============================================================
--- MAP BUILDING / DIFF-BASED UPDATES (M7 Performance)
--- ============================================================
-local mapSize = 10
-local cellSize = 50
-
-local function buildMap(data)
-    local newMapSize = math.sqrt(#data)
-    local newCellSize = math.clamp(560 / newMapSize, 24, 60)
-
-    -- Only resize grid if map size changed
-    if newMapSize ~= mapSize then
-        mapSize = newMapSize
-        cellSize = newCellSize
-        gridLayout.CellSize = UDim2.new(0, cellSize, 0, cellSize)
-
-        local totalGridSize = cellSize * mapSize + 2 * (mapSize - 1)
-        gridContainer.Size = UDim2.new(0, totalGridSize, 0, totalGridSize)
-        gridContainer.Position = UDim2.new(0.5, -totalGridSize / 2, 0.5, -totalGridSize / 2)
-    end
-
-    local dominionPct = getDominionPercentage(data)
-    dominionLabel.Text = "السيطرة: " .. dominionPct .. "%"
-
-    for _, cell in ipairs(data) do
-        local btn = cellButtons[cell.id]
-
-        if not btn then
-            -- Create new button for new cell
-            btn = Instance.new("TextButton")
-            btn.Name = cell.id
-            btn.Size = UDim2.new(0, cellSize, 0, cellSize)
-            btn.BackgroundColor3 = colorForOwner(cell.owner)
-            btn.BorderSizePixel = 0
-            btn.AutoButtonColor = false
-            btn.Font = Enum.Font.GothamBold
-            btn.TextSize = math.clamp(14, 10, 18)
-            btn.Text = TERRAIN_SYMBOLS[cell.terrainType] or "?"
-            btn.TextColor3 = Color3.new(1, 1, 1)
-            btn.Parent = gridContainer
-
-            local corner = Instance.new("UICorner")
-            corner.CornerRadius = UDim.new(0, 6)
-            corner.Parent = btn
-
-            local stroke = Instance.new("UIStroke")
-            stroke.Color = THEME.Border
-            stroke.Thickness = 1
-            stroke.Parent = btn
-
-            cellButtons[cell.id] = btn
-            btn:SetAttribute("Owner", cell.owner)
-            btn:SetAttribute("TerrainType", cell.terrainType or "Plains")
-
-            -- Connect events once
-            btn.MouseEnter:Connect(function()
-                if btn:GetAttribute("Owner") ~= myTeam then
-                    tweenObject(btn, {BackgroundColor3 = colorForOwner(cell.owner):Lerp(Color3.new(1,1,1), 0.3)}, 0.2)
-                end
-            end)
-
-            btn.MouseLeave:Connect(function()
-                tweenObject(btn, {BackgroundColor3 = colorForOwner(cell.owner)}, 0.2)
-            end)
-
-            btn.MouseButton1Click:Connect(function()
-                showInspector(cell)
-            end)
-        else
-            -- Diff-based update: only update changed attributes (no JSON encode/decode)
-            local prevOwner = btn:GetAttribute("Owner")
-            local prevTerrain = btn:GetAttribute("TerrainType")
-
-            if prevOwner ~= cell.owner then
-                btn.BackgroundColor3 = colorForOwner(cell.owner)
-                btn:SetAttribute("Owner", cell.owner)
-            end
-
-            if prevTerrain ~= (cell.terrainType or "Plains") then
-                btn.Text = TERRAIN_SYMBOLS[cell.terrainType] or "?"
-                btn:SetAttribute("TerrainType", cell.terrainType or "Plains")
-            end
-        end
-    end
-end
-
--- ============================================================
--- RESOURCES UPDATE (PER-PLAYER)
--- ============================================================
-local function updateResources(resources)
-    myResources = resources or {Gold = 0, Food = 0, Wood = 0, Relic = 0}
-    resourceLabel.Text = string.format(
-        "🪙 %d | 🍖 %d | 🪵 %d | 🔮 %d",
+local function updateResources(res)
+    myResources = res or {Gold=0, Food=0, Wood=0, Relic=0}
+    resValue.Text = string.format(
+        "🪙 %d   🍖 %d   🪵 %d   🔮 %d",
         myResources.Gold or 0,
         myResources.Food or 0,
         myResources.Wood or 0,
@@ -814,50 +1135,47 @@ local function updateResources(resources)
     )
 end
 
--- ============================================================
--- VISUAL EFFECTS
--- ============================================================
 local function playCaptureEffect(cellIds, colorName)
-    local flashColorMap = {
-        Red = Color3.fromRGB(255, 60, 60),
-        Blue = Color3.fromRGB(60, 60, 255),
-        Green = Color3.fromRGB(60, 255, 60),
+    local flashMap = {
+        Red    = Color3.fromRGB(255, 60, 60),
+        Blue   = Color3.fromRGB(60, 60, 255),
+        Green  = Color3.fromRGB(60, 255, 60),
         Yellow = Color3.fromRGB(255, 235, 60),
         Purple = Color3.fromRGB(180, 60, 255),
         Orange = Color3.fromRGB(255, 140, 0)
     }
-    local flashColor = flashColorMap[colorName] or Color3.new(1, 1, 1)
-    
+    local flash = flashMap[colorName] or Color3.new(1,1,1)
+
     for _, id in ipairs(cellIds) do
         local btn = cellButtons[id]
         if btn then
-            local originalColor = btn.BackgroundColor3
-            tweenObject(btn, {BackgroundColor3 = flashColor}, 0.1)
-            task.wait(0.1)
-            tweenObject(btn, {BackgroundColor3 = originalColor}, 0.2)
+            local orig = btn.BackgroundColor3
+            tween(btn, {BackgroundColor3 = flash}, 0.08)
+            task.delay(0.08, function()
+                if btn and btn.Parent then
+                    tween(btn, {BackgroundColor3 = orig}, 0.15)
+                end
+            end)
         end
     end
 end
 
--- ============================================================
--- TURN TIMER
--- ============================================================
+-- Turn timer
 local function updateTurnTimer()
     if not turnStartTime then return end
     local elapsed = tick() - turnStartTime
-    local remaining = math.max(0, turnTimeoutDuration - elapsed)
-    turnTimerLabel.Text = string.format("الوقت المتبقي: %ds", math.ceil(remaining))
-    
-    if remaining <= 0 then
-        turnTimerLabel.TextColor3 = THEME.Danger
+    local rem = math.max(0, turnTimeoutDuration - elapsed)
+    turnTimer.Text = string.format("الوقت المتبقي: %ds", math.ceil(rem))
+    if rem <= 5 then
+        turnTimer.TextColor3 = THEME.Danger
     else
-        turnTimerLabel.TextColor3 = THEME.TextSecondary
+        turnTimer.TextColor3 = THEME.TextMuted
     end
 end
 
 local function startTurnTimer()
     turnStartTime = tick()
-    spawn(function()
+    task.spawn(function()
         while turnStartTime do
             updateTurnTimer()
             task.wait(0.5)
@@ -867,7 +1185,8 @@ end
 
 local function stopTurnTimer()
     turnStartTime = nil
-    turnTimerLabel.Text = "الوقت المتبقي: --"
+    turnTimer.Text = "الوقت المتبقي: --"
+    turnTimer.TextColor3 = THEME.TextMuted
 end
 
 -- ============================================================
@@ -877,33 +1196,24 @@ LobbyState.OnClientEvent:Connect(function(data)
     updateLobbyUI(data)
 end)
 
-MatchState.OnClientEvent:Connect(function(data)
-    -- Match state updated from server
-end)
-
-UpdateMap.OnClientEvent:Connect(function(data, currentTeam, active)
-    currentTeam = currentTeam or "Player"
+UpdateMap.OnClientEvent:Connect(function(data, team, active)
+    currentTeam = team or "Player"
     isGameActive = active
-    currentTeam = currentTeam
-    
+
     buildMap(data)
-    
+
+    turnBadge.Text = currentTeam == "Player" and "P" or (currentTeam == "AI1" and "A1" or "A2")
+    turnBadge.BackgroundColor3 = colorForOwner(currentTeam)
+
+    local isMy = (currentTeam == myTeam)
+    turnText.Text = isMy and "دورك الآن" or "دور الخصم: " .. (TEAM_NAMES_AR[currentTeam] or currentTeam)
+    turnText.TextColor3 = isMy and THEME.Success or THEME.Warning
+
     if active then
-        turnLabel.Text = "الدور: " .. currentTeam
-        turnBadge.Text = currentTeam == "Player" and "P" or (currentTeam == "AI1" and "A1" or "A2")
-        turnBadge.BackgroundColor3 = colorForOwner(currentTeam)
-        
-        local isMyTurn = (currentTeam == myTeam)
-        turnLabel.TextColor3 = isMyTurn and THEME.Success or THEME.Warning
-        
-        if isMyTurn then
-            startTurnTimer()
-        else
-            stopTurnTimer()
-        end
+        if isMy then startTurnTimer() else stopTurnTimer() end
     else
-        turnLabel.Text = "انتهت المباراة!"
-        turnLabel.TextColor3 = THEME.Danger
+        turnText.Text = "انتهت المباراة!"
+        turnText.TextColor3 = THEME.Danger
         stopTurnTimer()
     end
 end)
@@ -911,12 +1221,20 @@ end)
 GameOver.OnClientEvent:Connect(function(winner)
     isGameActive = false
     stopTurnTimer()
-    turnLabel.Text = "🏆 الفائز: " .. winner
-    turnLabel.TextColor3 = THEME.Success
+    goWinner.Text = "الفائز: " .. winner
+    goWinner.TextColor3 = (winner == myTeam) and THEME.Success or THEME.Danger
+    goIcon.Text = (winner == myTeam) and "🏆" or "💀"
+    goIcon.TextColor3 = (winner == myTeam) and THEME.Success or THEME.Danger
+
+    gameOverBox.Visible = true
+    gameOverBox.BackgroundTransparency = 1
+    tween(gameOverBox, {BackgroundTransparency = 0.55}, 0.4)
+    goCard.Position = UDim2.new(0.5, -210, 0.5, -50)
+    tween(goCard, {Position = UDim2.new(0.5, -210, 0.5, -130)}, 0.4, Enum.EasingStyle.Back)
 end)
 
-ResourceUpdate.OnClientEvent:Connect(function(resources)
-    updateResources(resources)
+ResourceUpdate.OnClientEvent:Connect(function(res)
+    updateResources(res)
 end)
 
 VisualEffect.OnClientEvent:Connect(function(cellIds, colorName)
@@ -925,61 +1243,55 @@ end)
 
 EventNotify.OnClientEvent:Connect(function(data)
     if data.type == "PowerState" then
-        local cooldowns = data.cooldowns or {}
+        local cds = data.cooldowns or {}
         local powers = data.powers or {}
-        
-        for powerName, btn in pairs(powerButtons) do
-            local cd = cooldowns[powerName] or 0
-            local power = powers[powerName]
-            
+
+        for pName, btn in pairs(powerButtons) do
+            local cd = cds[pName] or 0
+            local p = powers[pName]
+
             if cd > 0 then
-                btn.BackgroundColor3 = Color3.fromRGB(80, 60, 60)
-                btn.Text = power.icon .. "\n" .. cd
-                btn.TextSize = 14
+                btn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+                btn.Text = p.icon .. "\n" .. cd
+                btn.TextSize = 12
                 btn.Active = false
             else
-                btn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-                btn.Text = power.icon
+                btn.BackgroundColor3 = p.color or THEME.Accent
+                btn.Text = p.icon
                 btn.TextSize = 20
                 btn.Active = true
             end
         end
-        
+
         local activeCount = 0
-        for _, cd in pairs(cooldowns) do
-            if cd > 0 then activeCount = activeCount + 1 end
-        end
-        powerLabel.Text = "القوى: " .. (6 - activeCount) .. "/6 متاحة"
-        powerCooldownLabel.Text = "التجديد: " .. activeCount .. " قوة في التبريد"
-        
-        -- Show active team effects briefly
+        for _, cd in pairs(cds) do if cd > 0 then activeCount = activeCount + 1 end end
+
         local teamEffects = data.teamEffects or {}
-        local myEffects = teamEffects[myTeam] or {}
-        if #myEffects > 0 then
-            local effectNames = {}
-            for _, eff in ipairs(myEffects) do
-                table.insert(effectNames, eff.power .. "(" .. eff.turnsRemaining .. ")")
-            end
-            powerCooldownLabel.Text = "تأثيرات نشطة: " .. table.concat(effectNames, ", ")
+        local myEff = teamEffects[myTeam] or {}
+        if #myEff > 0 then
+            local names = {}
+            for _, e in ipairs(myEff) do table.insert(names, e.power .. "(" .. e.turnsRemaining .. ")") end
+            -- Could show in a small label, keep simple
         end
-        
     elseif data.type == "Events" then
-        local active = data.active or {}
-        if #active > 0 then
-            local ev = active[1]
-            eventIconLabel.Text = ev.icon or "⚡"
-            eventTextLabel.Text = ev.nameAr or ev.name .. " (" .. ev.turnsRemaining .. " أدوار)"
-            eventNotifyFrame.Visible = true
-            tweenObject(eventNotifyFrame, {BackgroundTransparency = 0}, 0.3)
-            tweenObject(eventIconLabel, {TextTransparency = 0}, 0.3)
-            tweenObject(eventTextLabel, {TextTransparency = 0}, 0.3)
-            
+        local act = data.active or {}
+        if #act > 0 then
+            local ev = act[1]
+            eventIcon.Text = ev.icon or "⚡"
+            eventText.Text = (ev.nameAr or ev.name) .. " (" .. ev.turnsRemaining .. " أدوار)"
+            eventBox.Visible = true
+            eventBox.BackgroundTransparency = 1
+            eventBox.Position = UDim2.new(0.5, -170, 0, -80)
+            tween(eventBox, {BackgroundTransparency = 0, Position = UDim2.new(0.5, -170, 0, 30)}, 0.3)
+            tween(eventIcon, {TextTransparency = 0}, 0.3)
+            tween(eventText, {TextTransparency = 0}, 0.3)
+
             task.delay(4, function()
-                tweenObject(eventNotifyFrame, {BackgroundTransparency = 1}, 0.3)
-                tweenObject(eventIconLabel, {TextTransparency = 1}, 0.3)
-                tweenObject(eventTextLabel, {TextTransparency = 1}, 0.3)
+                tween(eventBox, {BackgroundTransparency = 1, Position = UDim2.new(0.5, -170, 0, -80)}, 0.3)
+                tween(eventIcon, {TextTransparency = 1}, 0.3)
+                tween(eventText, {TextTransparency = 1}, 0.3)
                 task.wait(0.3)
-                eventNotifyFrame.Visible = false
+                eventBox.Visible = false
             end)
         end
     end
@@ -987,246 +1299,117 @@ end)
 
 TurnTimeout.OnClientEvent:Connect(function(team)
     if team == myTeam then
-        turnTimerLabel.Text = "انتهى الوقت!"
-        turnTimerLabel.TextColor3 = THEME.Danger
+        turnTimer.Text = "انتهى الوقت!"
+        turnTimer.TextColor3 = THEME.Danger
         task.wait(1)
         stopTurnTimer()
     end
 end)
 
 -- ============================================================
--- LOBBY BUTTONS
+-- BUTTONS
 -- ============================================================
-readyButton.MouseButton1Click:Connect(function()
-    local isReady = readyButton.Text == "جاهز"
+readyBtn.MouseButton1Click:Connect(function()
+    local isReady = readyBtn.Text == "جاهز"
     SetReady:FireServer(isReady)
 end)
 
-startButton.MouseButton1Click:Connect(function()
+startBtn.MouseButton1Click:Connect(function()
     StartMatch:FireServer()
 end)
 
-for _, sz in ipairs(MapData.AvailableSizes) do
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 40, 1, 0)
-    btn.BackgroundColor3 = THEME.Surface
-    btn.BorderSizePixel = 0
-    btn.Text = tostring(sz) .. "×" .. tostring(sz)
-    btn.TextColor3 = THEME.TextPrimary
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 12
-    btn.Parent = mapSizeButtons
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = btn
-    
-    btn.MouseButton1Click:Connect(function()
-        SetMapSize:FireServer(sz)
-        mapSizeLabel.Text = "حجم الخريطة: " .. tostring(sz) .. "×" .. tostring(sz)
-    end)
-end
+insClose.MouseButton1Click:Connect(hideInspector)
 
--- ============================================================
--- COLOR BUTTONS
--- ============================================================
+goBtn.MouseButton1Click:Connect(function()
+    gameOverBox.Visible = false
+    tween(gameOverBox, {BackgroundTransparency = 1}, 0.3)
+end)
+
+-- Color buttons
 local function setupColorButtons(colors)
     for _, c in ipairs(colors) do
         local btn = Instance.new("TextButton")
         btn.Text = c
-        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-        btn.TextColor3 = Color3.new(1, 1, 1)
+        btn.BackgroundColor3 = THEME.Surface
+        btn.BorderSizePixel = 0
+        btn.TextColor3 = THEME.TextPrimary
         btn.Font = Enum.Font.GothamBold
         btn.TextSize = 14
         btn.AutoButtonColor = false
         btn.Parent = colorFrame
-        
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 8)
-        corner.Parent = btn
-        
-        local stroke = Instance.new("UIStroke")
-        stroke.Color = Color3.fromRGB(90, 90, 100)
-        stroke.Thickness = 1
-        stroke.Parent = btn
-        
-        btn.MouseEnter:Connect(function()
-            tweenObject(btn, {BackgroundColor3 = Color3.fromRGB(90, 90, 100)}, 0.2)
-        end)
-        btn.MouseLeave:Connect(function()
-            tweenObject(btn, {BackgroundColor3 = Color3.fromRGB(60, 60, 70)}, 0.2)
-        end)
-        
+
+        local cCorner = Instance.new("UICorner")
+        cCorner.CornerRadius = UDim.new(0, 12)
+        cCorner.Parent = btn
+
+        local cStroke = Instance.new("UIStroke")
+        cStroke.Color = THEME.Border
+        cStroke.Thickness = 1.5
+        cStroke.Parent = btn
+
+        setBtnHover(btn, THEME.Surface, THEME.SurfaceGlow)
+
         btn.MouseButton1Click:Connect(function()
             if isGameActive and currentTeam == myTeam then
                 SelectColor:FireServer(c)
+                ripple(btn)
             end
         end)
     end
 end
 
-setupColorButtons(MapData.Colors or {"Red", "Blue", "Green", "Yellow", "Purple", "Orange"})
+setupColorButtons(MapData.Colors or {"Red","Blue","Green","Yellow","Purple","Orange"})
 
--- ============================================================
--- POWER BUTTONS
--- ============================================================
+-- Power buttons
 local function setupPowerButtons()
-    local powers = {
-        {name = "Scout", icon = "🔍"},
-        {name = "Harvest", icon = "🌾"},
-        {name = "Fortify", icon = "🛡️"},
-        {name = "Sabotage", icon = "💣"},
-        {name = "ColorShift", icon = "🎨"},
-        {name = "Shockwave", icon = "💥"}
-    }
-    
-    for _, power in ipairs(powers) do
+    for _, p in ipairs({
+        {name="Scout", icon="🔍"}, {name="Harvest", icon="🌾"},
+        {name="Fortify", icon="🛡️"}, {name="Sabotage", icon="💣"},
+        {name="ColorShift", icon="🎨"}, {name="Shockwave", icon="💥"}
+    }) do
         local btn = Instance.new("TextButton")
-        btn.Name = "Power_" .. power.name
-        btn.Text = power.icon
-        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-        btn.TextColor3 = Color3.new(1, 1, 1)
+        btn.Name = "Power_" .. p.name
+        btn.Text = p.icon
+        btn.BackgroundColor3 = POWER_DATA[p.name].color
+        btn.BorderSizePixel = 0
+        btn.TextColor3 = Color3.new(1,1,1)
         btn.Font = Enum.Font.GothamBold
         btn.TextSize = 20
         btn.AutoButtonColor = false
         btn.Parent = powerFrame
-        
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 8)
-        corner.Parent = btn
-        
-        local stroke = Instance.new("UIStroke")
-        stroke.Color = Color3.fromRGB(90, 90, 100)
-        stroke.Thickness = 1
-        stroke.Parent = btn
-        
-        btn.MouseEnter:Connect(function()
-            tweenObject(btn, {BackgroundColor3 = Color3.fromRGB(90, 90, 100)}, 0.2)
-        end)
-        btn.MouseLeave:Connect(function()
-            tweenObject(btn, {BackgroundColor3 = Color3.fromRGB(60, 60, 70)}, 0.2)
-        end)
-        
+
+        local c = Instance.new("UICorner")
+        c.CornerRadius = UDim.new(0, 12)
+        c.Parent = btn
+
+        local s = Instance.new("UIStroke")
+        s.Color = Color3.new(1,1,1)
+        s.Thickness = 1
+        s.Transparency = 0.6
+        s.Parent = btn
+
+        setBtnHover(btn, POWER_DATA[p.name].color, POWER_DATA[p.name].color:Lerp(Color3.new(1,1,1), 0.15))
+
         btn.MouseButton1Click:Connect(function()
             if isGameActive and currentTeam == myTeam then
-                UsePower:FireServer(power.name, nil) -- targetCellId optional for now
+                UsePower:FireServer(p.name, nil)
+                ripple(btn)
             end
         end)
-        
-        powerButtons[power.name] = btn
+
+        powerButtons[p.name] = btn
     end
 end
 
 setupPowerButtons()
 
 -- ============================================================
--- BOARD / BOTTOM BAR VISIBILITY
+-- INIT
 -- ============================================================
-local function showMatchUI()
-    lobbyPanel.Visible = false
-    topHUD.Visible = true
-    boardArea.Visible = true
-    bottomBar.Visible = true
-end
-
-local function hideMatchUI()
-    lobbyPanel.Visible = true
-    topHUD.Visible = false
-    boardArea.Visible = false
-    bottomBar.Visible = false
-end
-
--- Initial state: show lobby
-hideMatchUI()
-
--- Join lobby automatically
 JoinLobby:FireServer()
+hideInspector()
 
--- Close inspector
-closeInspector.MouseButton1Click:Connect(hideInspector)
-
--- ============================================================
--- M7: AUDIO / FEEDBACK SYSTEM (Placeholders)
--- ============================================================
-local SoundService = game:GetService("SoundService")
-
-local AudioConfig = {
-    Click = {id = "rbxassetid://0", volume = 0.5},        -- Placeholder - replace with real asset
-    Capture = {id = "rbxassetid://0", volume = 0.6},
-    TurnStart = {id = "rbxassetid://0", volume = 0.4},
-    TurnEnd = {id = "rbxassetid://0", volume = 0.4},
-    PowerUse = {id = "rbxassetid://0", volume = 0.5},
-    EventStart = {id = "rbxassetid://0", volume = 0.6},
-    Win = {id = "rbxassetid://0", volume = 0.7},
-    Lose = {id = "rbxassetid://0", volume = 0.5},
-    Hover = {id = "rbxassetid://0", volume = 0.2}
-}
-
-local function playSound(soundName)
-    local config = AudioConfig[soundName]
-    if not config or not config.id or config.id == "rbxassetid://0" then
-        return -- No asset configured, skip silently
-    end
-    
-    local sound = Instance.new("Sound")
-    sound.SoundId = config.id
-    sound.Volume = config.volume
-    sound.Parent = SoundService
-    sound:Play()
-    
-    sound.Ended:Connect(function()
-        sound:Destroy()
-    end)
-end
-
--- Bind sounds to UI events
-for _, btn in ipairs(colorFrame:GetChildren()) do
-    if btn:IsA("TextButton") then
-        btn.MouseButton1Click:Connect(function()
-            playSound("Click")
-        end)
-    end
-end
-
-for _, btn in ipairs(powerFrame:GetChildren()) do
-    if btn:IsA("TextButton") then
-        btn.MouseButton1Click:Connect(function()
-            playSound("PowerUse")
-        end)
-    end
-end
-
-readyButton.MouseButton1Click:Connect(function()
-    playSound("Click")
-end)
-
-startButton.MouseButton1Click:Connect(function()
-    playSound("Click")
-end)
-
--- Game event sounds
-VisualEffect.OnClientEvent:Connect(function(cellIds, colorName)
-    if #cellIds > 0 then
-        playSound("Capture")
-    end
-end)
-
-GameOver.OnClientEvent:Connect(function(winner)
-    if winner == myTeam then
-        playSound("Win")
-    else
-        playSound("Lose")
-    end
-end)
-
-UpdateMap.OnClientEvent:Connect(function(data, currentTeam, active)
-    if active and currentTeam == myTeam then
-        playSound("TurnStart")
-    end
-end)
-
-EventNotify.OnClientEvent:Connect(function(data)
-    if data.type == "Events" and #data.active > 0 then
-        playSound("EventStart")
-    end
-end)
+-- Initial visual pulse on lobby card
+lobbyCard.Size = UDim2.new(0, 400, 0, 420)
+lobbyCard.Position = UDim2.new(0.5, -200, 0.5, -210)
+tween(lobbyCard, {Size = UDim2.new(0, 420, 0, 460), Position = UDim2.new(0.5, -210, 0.5, -230)}, 0.6, Enum.EasingStyle.Back)
