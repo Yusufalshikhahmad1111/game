@@ -6,72 +6,8 @@
       "$className": "ReplicatedStorage",
       "Shared": {
         "$className": "Folder",
-        "MapData": {
-          "$className": "ModuleScript",
-          "$path": "shared/MapData.lua"
-        },
         "Engine": {
-          "$className": "Folder",
-          "Cell": {
-            "$className": "ModuleScript",
-            "$path": "shared/Engine/Cell.lua"
-          },
-          "Board": {
-            "$className": "ModuleScript",
-            "$path": "shared/Engine/Board.lua"
-          },
-          "GameState": {
-            "$className": "ModuleScript",
-            "$path": "shared/Engine/GameState.lua"
-          },
-          "TurnManager": {
-            "$className": "ModuleScript",
-            "$path": "shared/Engine/TurnManager.lua"
-          },
-          "ResourceSystem": {
-            "$className": "ModuleScript",
-            "$path": "shared/Engine/ResourceSystem.lua"
-          },
-          "WinSystem": {
-            "$className": "ModuleScript",
-            "$path": "shared/Engine/WinSystem.lua"
-          },
-          "CaptureSystem": {
-            "$className": "ModuleScript",
-            "$path": "shared/Engine/CaptureSystem.lua"
-          },
-          "ValidationSystem": {
-            "$className": "ModuleScript",
-            "$path": "shared/Engine/ValidationSystem.lua"
-          },
-          "PowerSystem": {
-            "$className": "ModuleScript",
-            "$path": "shared/Engine/PowerSystem.lua"
-          },
-          "EventSystem": {
-            "$className": "ModuleScript",
-            "$path": "shared/Engine/EventSystem.lua"
-          },
-          "MatchModifierSystem": {
-            "$className": "ModuleScript",
-            "$path": "shared/Engine/MatchModifierSystem.lua"
-          },
-          "ProgressionSystem": {
-            "$className": "ModuleScript",
-            "$path": "shared/Engine/ProgressionSystem.lua"
-          },
-          "MultiplayerManager": {
-            "$className": "ModuleScript",
-            "$path": "shared/Engine/MultiplayerManager.lua"
-          },
-          "AIConfig": {
-            "$className": "ModuleScript",
-            "$path": "shared/Engine/AIConfig.lua"
-          },
-          "AIPlayer": {
-            "$className": "ModuleScript",
-            "$path": "shared/Engine/AIPlayer.lua"
-          }
+          "$className": "Folder"
         }
       },
       "GameRemotes": {
@@ -92,11 +28,7 @@
     "ServerStorage": {
       "$className": "ServerStorage",
       "Tests": {
-        "$className": "Folder",
-        "CoreTests": {
-          "$className": "ModuleScript",
-          "$path": "tests/CoreTests.lua"
-        }
+        "$className": "Folder"
       }
     },
     "StarterPlayer": {

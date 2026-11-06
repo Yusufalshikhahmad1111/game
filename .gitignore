@@ -26,6 +26,9 @@ build/
 .DS_Store
 Thumbs.db
 
+# Duplicate project copy
+game/
+
 # Temporary
 *.tmp
 *.temp
