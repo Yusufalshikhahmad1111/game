@@ -6,9 +6,7 @@
       "$className": "ReplicatedStorage",
       "Shared": {
         "$className": "Folder",
-        "Engine": {
-          "$className": "Folder"
-        }
+        "$path": "shared"
       },
       "GameRemotes": {
         "$className": "Folder"
@@ -28,7 +26,8 @@
     "ServerStorage": {
       "$className": "ServerStorage",
       "Tests": {
-        "$className": "Folder"
+        "$className": "Folder",
+        "$path": "tests"
       }
     },
     "StarterPlayer": {
