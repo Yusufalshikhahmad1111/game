@@ -40,6 +40,36 @@ local eventNotify = Instance.new("RemoteEvent")
 eventNotify.Name = "EventNotify"
 eventNotify.Parent = folder
 
+-- M6: Multiplayer
+local joinLobby = Instance.new("RemoteEvent")
+joinLobby.Name = "JoinLobby"
+joinLobby.Parent = folder
+
+local leaveLobby = Instance.new("RemoteEvent")
+leaveLobby.Name = "LeaveLobby"
+leaveLobby.Parent = folder
+
+local setReady = Instance.new("RemoteEvent")
+setReady.Name = "SetReady"
+setReady.Parent = folder
+
+local startMatch = Instance.new("RemoteEvent")
+startMatch.Name = "StartMatch"
+startMatch.Parent = folder
+
+-- Server → Client: lobby & match state
+local lobbyState = Instance.new("RemoteEvent")
+lobbyState.Name = "LobbyState"
+lobbyState.Parent = folder
+
+local matchState = Instance.new("RemoteEvent")
+matchState.Name = "MatchState"
+matchState.Parent = folder
+
+local turnTimeout = Instance.new("RemoteEvent")
+turnTimeout.Name = "TurnTimeout"
+turnTimeout.Parent = folder
+
 -- For future multiplayer
 local playerJoined = Instance.new("RemoteEvent")
 playerJoined.Name = "PlayerJoined"

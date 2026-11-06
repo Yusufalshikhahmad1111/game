@@ -60,6 +60,10 @@
             "$className": "ModuleScript",
             "$path": "shared/Engine/ProgressionSystem.lua"
           },
+          "MultiplayerManager": {
+            "$className": "ModuleScript",
+            "$path": "shared/Engine/MultiplayerManager.lua"
+          },
           "AIConfig": {
             "$className": "ModuleScript",
             "$path": "shared/Engine/AIConfig.lua"

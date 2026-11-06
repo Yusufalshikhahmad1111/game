@@ -18,7 +18,14 @@ local requiredRemotes = {
     "ResourceUpdate",
     "VisualEffect",
     "UsePower",
-    "EventNotify"
+    "EventNotify",
+    "JoinLobby",
+    "LeaveLobby",
+    "SetReady",
+    "StartMatch",
+    "LobbyState",
+    "MatchState",
+    "TurnTimeout"
 }
 
 for _, remoteName in ipairs(requiredRemotes) do
