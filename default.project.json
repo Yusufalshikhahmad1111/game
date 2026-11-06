@@ -1,0 +1,40 @@
+{
+  "name": "IslandDominion",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Shared": {
+        "$className": "Folder",
+        "MapData": {
+          "$className": "ModuleScript",
+          "$path": "shared/MapData.lua"
+        }
+      },
+      "GameRemotes": {
+        "$className": "Folder"
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "RemoteSetup": {
+        "$className": "Script",
+        "$path": "server/RemoteSetup.server.lua"
+      },
+      "GameManager": {
+        "$className": "Script",
+        "$path": "server/GameManager.server.lua"
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "ClientController": {
+          "$className": "LocalScript",
+          "$path": "client/ClientController.client.lua"
+        }
+      }
+    }
+  }
+}
