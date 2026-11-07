@@ -1090,7 +1090,8 @@ local function showInspector(cellData)
     local prodStr = ""
     for rt, amt in pairs(prod) do
         if prodStr ~= "" then prodStr = prodStr .. "  |  " end
-        local ico = {Gold="🪙", Food="🍖", Wood="🪵", Relic="🔮"}[rt] or ""
+        local icons = {Gold="🪙", Food="🍖", Wood="🪵", Relic="🔮"}
+        local ico = icons[rt] or ""
         prodStr = prodStr .. ico .. rt .. " +" .. amt
     end
     if prodStr ~= "" then
