@@ -19,7 +19,7 @@ Rules.HumanStartingGold = 25000
 Rules.BotStartingGold = 12000
 Rules.TroopRegenerationBase = 10
 Rules.TroopCapPerTile = 40
-Rules.GoldPerSecond = 100
+Rules.GoldPerSecond = 1000
 
 -- Around a dozen pixels to start, with a noisy edge instead of a square blob.
 Rules.SpawnRadius = 2
@@ -67,34 +67,34 @@ Rules.Naval = {
 
 Rules.Buildings = {
     City = {
-        Cost = 25000,
-        GoldPerSecond = 150,
+        Cost = 125000,
+        GoldPerSecond = 100,
         TroopCapacity = 250000,
     },
     Factory = {
-        Cost = 40000,
-        GoldPerSecond = 450,
+        Cost = 125000,
+        GoldPerSecond = 400,
     },
     Port = {
-        Cost = 30000,
-        GoldPerSecond = 80,
+        Cost = 125000,
+        GoldPerSecond = 100,
         BoatSpeedMultiplier = 1.5,
         RequiresCoast = true,
     },
     DefensePost = {
-        Cost = 35000,
+        Cost = 50000,
         DefenseMultiplier = 2.5,
     },
     MissileSilo = {
-        Cost = 150000,
-        MissileCost = 200000,
+        Cost = 1000000,
+        MissileCost = 750000,
     },
     SAM = {
-        Cost = 80000,
+        Cost = 1500000,
         DefenseMultiplier = 1.6,
     },
     Warship = {
-        Cost = 90000,
+        Cost = 250000,
         RequiresCoast = true,
         DefenseMultiplier = 1.8,
     },
@@ -120,10 +120,11 @@ Rules.Alliance = {
 
 Rules.Nuclear = {
     Enabled = true,
-    Cost = 200000,
-    CooldownSeconds = 90,
-    Radius = 5,
-    TroopLoss = 0.35,
+    Weapons = {
+        Atom = {Cost = 750000, CooldownSeconds = 90, Radius = 5, TroopLoss = 0.35},
+        Hydrogen = {Cost = 5000000, CooldownSeconds = 120, Radius = 9, TroopLoss = 0.55},
+        MIRV = {Cost = 25000000, CooldownSeconds = 180, Radius = 6, TroopLoss = 0.40, Warheads = 5},
+    },
 }
 
 Rules.Render = {
