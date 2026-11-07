@@ -564,6 +564,7 @@ function State:metadataSnapshot()
         width=self.map.width,height=self.map.height,
         totalLand=self.map.totalLand,time=self.time,winner=self.winner,
         victoryShare=self.map.victoryShare or 0.80,
+        victoryShare=self.map.victoryShare or 0.80,
         ownerIds=self.ownerIds,players=packPlayers(self),attacks=packAttacks(self),
         buildingMarkers=markers,
     }
