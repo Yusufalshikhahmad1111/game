@@ -1192,6 +1192,25 @@ local function stopTurnTimer()
 end
 
 -- ============================================================
+-- UI STATE TRANSITIONS
+-- ============================================================
+local function showMatchUI()
+    lobby.Visible = false
+    hud.Visible = true
+    bottomBar.Visible = true
+    gameOverBox.Visible = false
+end
+
+local function showLobbyUI()
+    gameOverBox.Visible = false
+    inspector.Visible = false
+    bottomBar.Visible = false
+    hud.Visible = false
+    lobby.Visible = true
+    hideInspector()
+end
+
+-- ============================================================
 -- EVENTS
 -- ============================================================
 LobbyState.OnClientEvent:Connect(function(data)
@@ -1201,6 +1220,12 @@ end)
 UpdateMap.OnClientEvent:Connect(function(data, team, active)
     currentTeam = team or "Player"
     isGameActive = active
+
+    if active then
+        showMatchUI()
+    else
+        showLobbyUI()
+    end
 
     buildMap(data)
 
@@ -1223,6 +1248,8 @@ end)
 GameOver.OnClientEvent:Connect(function(winner)
     isGameActive = false
     stopTurnTimer()
+    hud.Visible = true
+    bottomBar.Visible = false
     goWinner.Text = "الفائز: " .. winner
     goWinner.TextColor3 = (winner == myTeam) and THEME.Success or THEME.Danger
     goIcon.Text = (winner == myTeam) and "🏆" or "💀"
