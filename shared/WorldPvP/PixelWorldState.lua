@@ -21,7 +21,8 @@ end
 function State.new(options)
     options=options or {}
     local self=setmetatable({},State)
-    self.map=options.map or TileMap.build()
+    self.map=options.map or TileMap.build(options.mapKey)
+    self.mapKey=self.map.mapKey or options.mapKey or "World"
     self.players={};self.byUser={};self.ownerIds={};self.ownerIndexById={}
     self.attacks={};self.nextAttack=0;self.time=0
     self.matchId="world_"..tostring(os.time())
@@ -79,29 +80,42 @@ end
 
 function State:_seedAI()
     -- Warm, legible nation colours: greens, ochres, clay and wood.
-    -- Avoids blue/cyan families throughout the world map.
     local palette={
         {0.83,0.34,0.20},{0.88,0.68,0.23},{0.31,0.58,0.27},{0.63,0.42,0.27},
         {0.72,0.43,0.36},{0.54,0.61,0.28},{0.66,0.30,0.31},{0.81,0.73,0.43},
         {0.40,0.48,0.24},{0.73,0.55,0.28},{0.58,0.40,0.32},{0.76,0.48,0.22},
     }
-    local ids={}
-    for _,country in ipairs(CountryMapData.Countries) do ids[#ids+1]=country.id end
-    local used={}
-    for i=1,math.min(Rules.AI.NationCount,#ids) do
-        local countryId=ids[i]
-        if not used[countryId] then
-            used[countryId]=true
-            local n=self:_newNation("AI_N"..i,countryId,true,"Nation",palette[((i-1)%#palette)+1])
-            local center=self.map:countryCenterTile(countryId)
-            if center then self:_claimSpawn(n,center,Rules.NationSpawnRadius) end
+    local countryIds={}
+    for countryId in pairs(self.map.countryTiles) do
+        if self.map:countryCenterTile(countryId) then
+            countryIds[#countryIds+1]=countryId
         end
     end
+    table.sort(countryIds)
+    local nationCount=math.min(Rules.AI.NationCount,#countryIds)
+    for i=1,nationCount do
+        -- Evenly sample countries so the first alphabetical entries do not
+        -- monopolize one side of a continental map.
+        local index=math.floor(((i-.5)/math.max(1,nationCount))*#countryIds)+1
+        local countryId=countryIds[index]
+        local center=self.map:countryCenterTile(countryId)
+        if center and self.map:get(center).ownerId==0 then
+            local n=self:_newNation("AI_N"..i,countryId,true,"Nation",palette[((i-1)%#palette)+1])
+            self:_claimSpawn(n,center,Rules.NationSpawnRadius)
+        end
+    end
+
+    -- Tribes are seeded from evenly spaced land candidates rather than being
+    -- limited to one spawn per country; this keeps regional maps populated.
     local tribeIndex=0
-    for _,country in ipairs(CountryMapData.Countries) do
-        if tribeIndex>=Rules.AI.TribeCount then break end
-        local center=self.map:countryCenterTile(country.id)
-        local tile=center and self.map:get(center)
+    local landIds=self.map.landTiles
+    local candidateCount=#landIds
+    for i=1,Rules.AI.TribeCount do
+        if candidateCount==0 then break end
+        local index=math.floor(((i-.5)/Rules.AI.TribeCount)*candidateCount)+1
+        index=math.clamp(index,1,candidateCount)
+        local center=landIds[index]
+        local tile=self.map:get(center)
         if tile and tile.ownerId==0 then
             tribeIndex+=1
             local n=self:_newNation("AI_T"..tribeIndex,"Tribe "..tostring(tribeIndex),true,"Tribe",palette[((tribeIndex+4)%#palette)+1])
@@ -579,7 +593,8 @@ function State:metadataSnapshot()
         end
     end
     return {
-        matchId=self.matchId,width=self.map.width,height=self.map.height,
+        matchId=self.matchId,mapKey=self.mapKey,mapTitle=self.map.mapTitle or self.mapKey,
+        width=self.map.width,height=self.map.height,
         totalLand=self.map.totalLand,time=self.time,winner=self.winner,
         ownerIds=self.ownerIds,players=packPlayers(self),attacks=packAttacks(self),
         buildingMarkers=markers,
