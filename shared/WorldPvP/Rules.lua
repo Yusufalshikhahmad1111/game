@@ -126,9 +126,6 @@ Rules.Nuclear = {
     TroopLoss = 0.35,
 }
 
-Rules.Render = {
-    ChunkSize = 64,
-    InitialChunkRows = 8,
-}
+Rules.Render = {\n    ChunkSize = 64,\n    ChunksPerBurst = 4,\n}
 
 return Rules
