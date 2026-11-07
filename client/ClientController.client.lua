@@ -956,6 +956,9 @@ end
 
 setupSizeButtons()
 
+-- Forward declaration: buildMap wires cell callbacks before inspector implementation.
+local showInspector
+
 local function buildMap(data)
     local newSize = math.sqrt(#data)
     local newCell = math.clamp(600 / newSize, 24, 60)
@@ -1036,7 +1039,7 @@ local function buildMap(data)
     end
 end
 
-local function showInspector(cellData)
+showInspector = function(cellData)
     if not cellData then return end
     selectedCellId = cellData.id
 
