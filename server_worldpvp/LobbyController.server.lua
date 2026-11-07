@@ -59,7 +59,7 @@ end
 lobby.EnterPrompt.Triggered:Connect(function(player)
     player:SetAttribute("SelectedMode",player:GetAttribute("SelectedMode") or "FFA")
     player:SetAttribute("SelectedMap",player:GetAttribute("SelectedMap") or "World")
-    EnterMatch:FireServer(player)
+    EnterMatchRequest:Fire(player)
 end)
 
 local function hideCharacter(player,character)
@@ -84,6 +84,11 @@ local function wirePlayer(player)
     player.CharacterAdded:Connect(function(character)
         task.wait()
         hideCharacter(player,character)
+    end)
+    player:GetAttributeChangedSignal("InWorldMatch"):Connect(function()
+        if player:GetAttribute("InWorldMatch") then
+            hideCharacter(player,player.Character)
+        end
     end)
 end
 
