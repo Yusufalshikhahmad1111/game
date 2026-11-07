@@ -118,6 +118,7 @@ function WorldState:assignPlayerCountry(userId, countryId)
     if nation.category~="Nation" then return false, "This territory is AI controlled" end
     nation.ownerUserId=userId
     nation.isAI=false
+    self.countryOwners[countryId]=countryId
     self.playerNation[userId]=countryId
     return true,nation
 end
