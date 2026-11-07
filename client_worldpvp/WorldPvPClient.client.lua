@@ -137,7 +137,7 @@ buildButton("CITY",-370,"City").Size=UDim2.fromOffset(62,34)
 buildButton("FACTORY",-302,"Factory").Size=UDim2.fromOffset(72,34)
 buildButton("PORT",-224,"Port").Size=UDim2.fromOffset(58,34)
 buildButton("DEFENSE",-160,"DefensePost").Size=UDim2.fromOffset(70,34)
-buildButton("NUKE",-84,"MissileSilo").Size=UDim2.fromOffset(72,34)
+local nukeButton=button(dock,"NUKE",UDim2.new(1,-84,0,22),UDim2.fromOffset(72,34),function()\n    if selectedTile then Nuke:FireServer(selectedTile) end\nend)
 
 local notice=Instance.new("TextLabel")
 notice.Size=UDim2.new(0,380,0,38);notice.Position=UDim2.new(.5,-190,0,66);notice.BackgroundColor3=Color3.fromRGB(12,19,28)
@@ -234,7 +234,7 @@ click.InputBegan:Connect(function(input)
     if not snapshot or not landByTile[id] then return end
     local owner=ownerByTile[id] or 0
     if not myId and owner==0 then Spawn:FireServer(id)
-    elseif myId and owner~=0 and owner~=snapshot.ownerIds[myId] then Attack:FireServer(id,ratio)
+    elseif myId and owner~=0 and ownerIdForTile~=myId then Attack:FireServer(id,ratio)
     end
 end)
 

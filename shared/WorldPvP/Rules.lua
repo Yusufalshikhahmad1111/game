@@ -128,7 +128,7 @@ Rules.Nuclear = {
 
 Rules.Render = {
     ChunkSize = 64,
-    ChunksPerBurst = 4,
+    InitialChunkRows = 8,
 }
 
 return Rules
