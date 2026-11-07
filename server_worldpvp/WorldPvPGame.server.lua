@@ -18,6 +18,8 @@ local function event(name)
 end
 local Spawn=event("Spawn")
 local Attack=event("Attack")
+local Build=event("Build")
+local Nuke=event("Nuke")
 local Request=event("RequestSnapshot")
 local Snapshot=event("Snapshot")
 local Notice=event("Notice")
@@ -44,6 +46,16 @@ Attack.OnServerEvent:Connect(function(p,tileId,ratio)
     local ok,result=world:attack(p.UserId,tonumber(tileId),ratio)
     if not ok then notice(p,result,"error");return end
     notice(p,"تم إرسال الجيش "..math.floor((tonumber(ratio) or .2)*100).."% إلى الجبهة.","success")
+end)
+
+Build.OnServerEvent:Connect(function(p,tileId,kind)
+    local ok,msg=world:build(p.UserId,tonumber(tileId),tostring(kind))
+    if not ok then notice(p,msg,"error") else notice(p,"تم بناء "..tostring(kind),"success") end
+end)
+
+Nuke.OnServerEvent:Connect(function(p,tileId)
+    local ok,msg=world:nuke(p.UserId,tonumber(tileId))
+    if not ok then notice(p,msg,"error") else notice(p,"☢ تم إطلاق الضربة النووية.","success") end
 end)
 
 Request.OnServerEvent:Connect(send)
