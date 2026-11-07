@@ -32,6 +32,11 @@ local palette={
 }
 for i,country in ipairs(CountryMapData.Countries) do
     state:addCountryNation(country.id,palette[((i-1)%#palette)+1],"Nation")
+    -- Roughly half the world starts as neutral land; the rest is occupied by AI nations.
+    -- This gives the player a real "choose your starting location" phase.
+    if i % 2 == 1 then
+        state.countryOwners[country.id]=nil
+    end
 end
 
 local function send(player)
