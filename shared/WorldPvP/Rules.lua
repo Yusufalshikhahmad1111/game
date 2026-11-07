@@ -1,105 +1,108 @@
 -- shared/WorldPvP/Rules.lua
--- Original Roblox-native World PvP balance. Tune after server load tests.
+-- Independent Luau rules for a real-time tile-conquest World PvP game.
+-- Core interaction model researched from OpenFront/RoWorld: spawn on free land,
+-- attack the target owner by sending a troop fraction, expand along the frontier,
+-- and launch transport attacks across water.
 
 local Rules = {}
 
+Rules.MapWidth = 256
+Rules.MapHeight = 128
 Rules.MaxPlayers = 55
-Rules.TargetWorldShare = 0.80
-Rules.TickSeconds = 1
-Rules.SnapshotSeconds = 2
+Rules.TickSeconds = 0.1
+Rules.SnapshotSeconds = 0.3
+Rules.StatsSeconds = 0.8
 
-Rules.StartingGold = 100000
-Rules.StartingTroops = 12000
-Rules.StartingPopulation = 10000
-Rules.TribeStartingGold = 18000
-Rules.TribeStartingTroops = 2800
-Rules.TribeStartingPopulation = 1200
+Rules.HumanStartingTroops = 25000
+Rules.NationStartingTroops = 18000
+Rules.TribeStartingTroops = 10000
+Rules.HumanStartingGold = 25000
+Rules.BotStartingGold = 12000
 
-Rules.BaseGoldPerTick = 250
-Rules.BaseTroopsPerTick = 90
-Rules.BasePopulationPerTick = 50
+Rules.SpawnRadius = 3
+Rules.NationSpawnRadius = 2
+Rules.TribeSpawnRadius = 1
+Rules.DefaultAttackRatio = 0.20
+Rules.MinimumAttackRatio = 0.01
+Rules.MaximumAttackRatio = 1.00
+
+Rules.TroopRegenerationBase = 10
+Rules.GoldPerSecond = 100
+Rules.BoatSecondsPerTile = 0.25
+Rules.BoatMaxActive = 3
+Rules.BoatGoldCost = 0
+
+Rules.Attack = {
+    -- OpenFront-style terrain pressure / tile speed values.
+    Plains = { Magnitude = 80, TileCost = 16.5 },
+    Forest = { Magnitude = 90, TileCost = 18 },
+    Highland = { Magnitude = 100, TileCost = 20 },
+    Mountain = { Magnitude = 120, TileCost = 25 },
+    NeutralCostScale = 2000,
+    NeutralMinCost = 5,
+    NeutralMaxCost = 100,
+    DefenderLossPerTile = 1,
+    HumanTroopLossModifier = 1,
+    DefenderDensityFactor = 0.0039,
+    BaseAttackerLossFactor = 0.463,
+    CheapestRatio = 0.6,
+    SpeedRatioFloor = 0.82,
+    SpeedRatioCeiling = 7.5,
+    SpeedCostDivisor = 8.55,
+    RetreatLossAgainstPlayers = 0.25,
+    RetreatLossAgainstNeutral = 0,
+}
 
 Rules.Buildings = {
     City = {
         Cost = 25000,
-        GoldPerTick = 800,
-        PopulationCapacity = 5000,
-        TroopsPerTick = 40,
-        RequiresCoast = false,
-    },
-    Port = {
-        Cost = 50000,
-        GoldPerTick = 500,
-        PopulationCapacity = 0,
-        TroopsPerTick = 0,
-        RequiresCoast = true,
+        GoldPerSecond = 150,
+        TroopCapacity = 250000,
     },
     Factory = {
-        Cost = 80000,
-        GoldPerTick = 1800,
-        PopulationCapacity = 0,
-        TroopsPerTick = 0,
-        RequiresCoast = false,
+        Cost = 40000,
+        GoldPerSecond = 450,
+        TroopCapacity = 0,
+    },
+    Port = {
+        Cost = 30000,
+        GoldPerSecond = 80,
+        TroopCapacity = 0,
+        BoatSpeedMultiplier = 1.5,
     },
     DefensePost = {
         Cost = 35000,
-        GoldPerTick = 0,
-        PopulationCapacity = 0,
-        TroopsPerTick = 0,
-        DefenseMultiplier = 1.65,
-        RequiresCoast = false,
+        DefenseMultiplier = 2.5,
     },
     MissileSilo = {
         Cost = 150000,
-        GoldPerTick = 0,
-        PopulationCapacity = 0,
-        TroopsPerTick = 0,
-        RequiresCoast = false,
+        MissileCost = 200000,
     },
     SAM = {
-        Cost = 100000,
-        GoldPerTick = 0,
-        PopulationCapacity = 0,
-        TroopsPerTick = 0,
-        DefenseMultiplier = 1.0,
-        RequiresCoast = false,
+        Cost = 80000,
+        DefenseMultiplier = 1.6,
     },
-}
-
-Rules.Attack = {
-    MinimumTroops = 500,
-    TravelSeconds = 3,
-    NavalTravelSeconds = 8,
-    NavalGoldCost = 2500,
-    WinRatio = 1.15,
-    AttackerLossOnWin = 0.30,
-    AttackerLossOnFail = 0.70,
-    NeutralDefense = 200,
-    DefenderTroopFactor = 0.04,
-}
-
-Rules.Nuke = {
-    Cost = 250000,
-    CooldownSeconds = 90,
-    Radius = 2,
-    TroopLoss = 0.25,
-    SAMInterceptionRadius = 1,
-}
-
-Rules.Alliance = {
-    OfferLifetimeSeconds = 60,
 }
 
 Rules.AI = {
-    ThinkMinSeconds = 4,
-    ThinkMaxSeconds = 8,
-    AttackReserveRatio = 0.35,
-    MinimumAttackTroops = 700,
-    CityReserveGold = 30000,
-    FactoryReserveGold = 90000,
-    DefenseReserveGold = 50000,
-    PortReserveGold = 60000,
-    NuclearReserveGold = 300000,
+    NationCount = 88,
+    TribeCount = 140,
+    NationThinkMin = 2.5,
+    NationThinkMax = 5,
+    TribeThinkMin = 5,
+    TribeThinkMax = 10,
+    NationAttackRatio = 0.06,
+    TribeAttackRatio = 0.035,
+    MinimumAttackTroops = 500,
+    ExpansionNeutralFirst = true,
+}
+
+Rules.Nuclear = {
+    Enabled = true,
+    Cost = 200000,
+    CooldownSeconds = 90,
+    Radius = 3,
+    TroopLoss = 0.35,
 }
 
 return Rules
