@@ -50,6 +50,7 @@ function WorldState.new(map)
     self.totalLand = map.totalLand
     self.countryMode = true
     self.countryById = {}
+    self.countryOwners = {}
     return self
 end
 
@@ -103,6 +104,7 @@ function WorldState:addCountryNation(countryId, color, category)
     }
     self.nations[countryId]=nation
     self.countryById[countryId]=nation
+    self.countryOwners[countryId]=countryId
     return nation
 end
 
@@ -115,15 +117,16 @@ function WorldState:assignPlayerCountry(userId, countryId)
     if nation.category~="Nation" then return false, "This territory is AI controlled" end
     nation.ownerUserId=userId
     nation.isAI=false
+    nation.displayName = nil
     self.playerNation[userId]=countryId
     return true,nation
 end
 
 function WorldState:countryIsAdjacent(attackerId,targetId)
-    local a=self.nations[attackerId]
-    if not a then return false end
-    for _,neighborId in ipairs(a.neighbors or {}) do
-        if neighborId==targetId then return true end
+    local target=CountryMapData.get(targetId)
+    if not target then return false end
+    for _,neighborId in ipairs(target.neighbors or {}) do
+        if self.countryOwners[neighborId]==attackerId then return true end
     end
     return false
 end
@@ -133,37 +136,41 @@ function WorldState:attackCountry(userId,targetId,troopCount)
     if not attacker then return false,"Player does not own a country" end
     local target=self.nations[targetId]
     if not target then return false,"Unknown target country" end
-    if target.id==attacker.id then return false,"That is your country" end
-    if not self:countryIsAdjacent(attacker.id,target.id) then return false,"You can only attack a neighboring country" end
-    if self:isAllied(attacker.id,target.id) then return false,"You cannot attack an ally" end
+    if self.countryOwners[targetId]==attacker.id then return false,"That is already your territory" end
+    if not self:countryIsAdjacent(attacker.id,targetId) then return false,"You can only attack a neighboring country" end
+    local defenderOwner=self.countryOwners[targetId]
+    if defenderOwner and self:isAllied(attacker.id,defenderOwner) then return false,"You cannot attack an ally" end
     local amount=math.floor(tonumber(troopCount) or 0)
     if amount<Rules.Attack.MinimumTroops or amount>attacker.troops then return false,"Invalid troop amount" end
     attacker.troops-=amount
     self.nextAttackId+=1
-    self.attacks[#self.attacks+1]={id=self.nextAttackId,attackerNationId=attacker.id,defenderNationId=target.id,targetCountryId=target.id,troopCount=amount,naval=false,resolvesAt=self.clock+Rules.Attack.TravelSeconds}
+    self.attacks[#self.attacks+1]={id=self.nextAttackId,attackerNationId=attacker.id,defenderNationId=self.countryOwners[targetId],targetCountryId=target.id,troopCount=amount,naval=false,resolvesAt=self.clock+Rules.Attack.TravelSeconds}
     return true,self.nextAttackId
 end
 
 function WorldState:_resolveCountryAttack(a)
     local attacker=self.nations[a.attackerNationId]
-    local defender=self.nations[a.defenderNationId]
-    if not attacker or not defender or not defender.ownerUserId and defender.category=="Tribe" then
+    local defenderOwner=a.defenderNationId and self.nations[a.defenderNationId] or nil
+    local targetId=a.targetCountryId
+    if not attacker or not targetId or not self.nations[targetId] then
         return {type="AttackCancelled",attackId=a.id}
     end
-    local defense=math.max(250,defender.troops*Rules.Attack.DefenderTroopFactor)
+    local defender=defenderOwner
+    local defense=defender and math.max(250,defender.troops*Rules.Attack.DefenderTroopFactor) or Rules.Attack.NeutralDefense
     local won=a.troopCount>=defense*Rules.Attack.WinRatio
     if not won then
         attacker.troops+=math.floor(a.troopCount*(1-Rules.Attack.AttackerLossOnFail))
-        defender.troops=math.max(0,defender.troops-math.floor(a.troopCount*.1))
-        return {type="AttackRepelled",attackId=a.id,countryId=defender.id}
+        if defender then defender.troops=math.max(0,defender.troops-math.floor(a.troopCount*.1)) end
+        return {type="AttackRepelled",attackId=a.id,countryId=targetId}
     end
-    defender.ownerUserId=nil
-    defender.isAI=false
-    defender.eliminated=true
+    self.countryOwners[targetId]=attacker.id
+    if defender and defender.id~=attacker.id then
+        defender.score=math.max(0,defender.score)
+    end
     attacker.troops+=math.floor(a.troopCount*(1-Rules.Attack.AttackerLossOnWin))
     attacker.score+=1
     attacker.gold+=25000
-    return {type="CountryCaptured",attackId=a.id,countryId=defender.id,nationId=attacker.id}
+    return {type="CountryCaptured",attackId=a.id,countryId=targetId,nationId=attacker.id}
 end
 
 function WorldState:getNationForPlayer(userId)
@@ -172,12 +179,22 @@ function WorldState:getNationForPlayer(userId)
 end
 
 function WorldState:getNationLand(id)
-    local n = self.nations[id]
-    return n and #n.cellIds or 0
+    local count=0
+    for _,ownerId in pairs(self.countryOwners) do if ownerId==id then count+=1 end end
+    return count
 end
 
 function WorldState:getWorldShare(id)
-    return self.totalLand > 0 and self:getNationLand(id) / self.totalLand or 0
+    local total=0
+    local owned=0
+    for countryId,ownerId in pairs(self.countryOwners) do
+        local country=CountryMapData.get(countryId)
+        if country then
+            total+=math.max(1,country.area)
+            if ownerId==id then owned+=math.max(1,country.area) end
+        end
+    end
+    return total>0 and owned/total or 0
 end
 
 function WorldState:isAllied(a,b)
@@ -349,7 +366,7 @@ end
 
 function WorldState:getWinner()
     for id,n in pairs(self.nations) do
-        if n.category=="Nation" and #n.cellIds>0 and self:getWorldShare(id)>=Rules.TargetWorldShare then return id end
+        if n.category=="Nation" and self:getNationLand(id)>0 and self:getWorldShare(id)>=Rules.TargetWorldShare then return id end
     end
 end
 
@@ -358,10 +375,11 @@ function WorldState:tick(dt)
     self.clock+=dt
     local events={}
     for _,n in pairs(self.nations) do
-        if #n.cellIds>0 then
-            local cities=countBuildings(self,n,"City")
-            local factories=countBuildings(self,n,"Factory")
-            local ports=countBuildings(self,n,"Port")
+        local active = self.countryMode and self:getNationLand(n.id)>0 or #n.cellIds>0
+        if active then
+            local cities=self.countryMode and 0 or countBuildings(self,n,"City")
+            local factories=self.countryMode and 0 or countBuildings(self,n,"Factory")
+            local ports=self.countryMode and 0 or countBuildings(self,n,"Port")
             n.gold+=math.floor((Rules.BaseGoldPerTick+cities*Rules.Buildings.City.GoldPerTick+factories*Rules.Buildings.Factory.GoldPerTick+ports*Rules.Buildings.Port.GoldPerTick)*dt)
             local cap=Rules.StartingTroops+cities*Rules.Buildings.City.PopulationCapacity
             n.troops=math.min(cap,n.troops+math.floor((Rules.BaseTroopsPerTick+cities*Rules.Buildings.City.TroopsPerTick)*dt))
@@ -390,7 +408,9 @@ function WorldState:getCountrySnapshot()
     local countries={}
     for _,country in ipairs(CountryMapData.Countries) do
         local n=self.nations[country.id]
-        countries[#countries+1]={id=country.id,name=country.name,continent=country.continent,center=country.center,bbox=country.bbox,neighbors=country.neighbors,ownerUserId=n and n.ownerUserId or nil,isAI=n and n.isAI or true,category=n and n.category or "Nation",color=n and n.color or {r=.22,g=.32,b=.40},gold=n and n.gold or 0,troops=n and n.troops or 0,population=n and n.population or 0,score=n and n.score or 0}
+        local ownerId=self.countryOwners[country.id]
+        local owner=self.nations[ownerId]
+        countries[#countries+1]={id=country.id,name=country.name,continent=country.continent,center=country.center,bbox=country.bbox,neighbors=country.neighbors,ownerNationId=ownerId,ownerUserId=owner and owner.ownerUserId or nil,ownerName=owner and (owner.displayName or owner.name) or nil,isAI=owner and owner.isAI or true,category=owner and owner.category or "Nation",color=owner and owner.color or {r=.22,g=.32,b=.40},gold=owner and owner.gold or 0,troops=owner and owner.troops or 0,population=owner and owner.population or 0,score=owner and owner.score or 0}
     end
     return {countries=countries,matchOver=self.matchOver,winnerNationId=self.winnerNationId,serverTime=self.clock}
 end
