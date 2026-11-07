@@ -46,7 +46,7 @@ local function isInWorld(player)
 end
 
 local function lobby()
-    return workspace:FindFirstChild("WorldDominionLobby")
+    return workspace:FindFirstChild("Lobby")
 end
 
 local function setLobbyColor(name,color)
@@ -201,7 +201,15 @@ SelectMap.OnServerEvent:Connect(function(player,mapId)
         notice(player,"هناك مباراة جارية بالفعل.","error")
         return
     end
-    startMatch(player,tostring(mapId or ""))
+
+    local definition=MapRegistry.get(tostring(mapId or ""))
+    if not definition then
+        notice(player,"خريطة غير صالحة.","error")
+        return
+    end
+
+    player:SetAttribute("WorldDominionMap",definition.id)
+    notice(player,"اخترت "..definition.title..". الآن اقترب من ENTER WORLD.","success")
 end)
 
 Spawn.OnServerEvent:Connect(function(player,tileId)
@@ -273,6 +281,8 @@ end)
 
 Players.PlayerAdded:Connect(function(player)
     player:SetAttribute("WorldDominionActive",false)
+    player:SetAttribute("WorldDominionMode","FFA")
+    player:SetAttribute("WorldDominionMap",MapRegistry.Default)
     task.defer(function()
         notice(player,"أهلاً بك في بيت 404 FOUND. اختر نمط اللعب ثم الخريطة.","info")
     end)
@@ -289,8 +299,8 @@ Players.PlayerRemoving:Connect(function(player)
     end
 end)
 
--- Physical 3D lobby controls. The lobby geometry itself is static in Rojo,
--- so it is visible in Edit mode even before Play is pressed.
+-- Physical 3D lobby controls. The geometry is static in Workspace,
+-- therefore it is visible in Edit mode before Play.
 task.defer(function()
     local root=lobby()
     if not root then
@@ -298,36 +308,81 @@ task.defer(function()
         return
     end
 
-    local modes={"Teams","FFA","Solo"}
-    for _,mode in ipairs(modes) do
-        local part=root:FindFirstChild(mode)
-        local click=part and part:FindFirstChildOfClass("ClickDetector")
-        if click then
-            click.MouseClick:Connect(function(player)
+    local modeEntries={
+        {prompt=root.ModePads and root.ModePads:FindFirstChild("TeamsPrompt"),mode="Teams"},
+        {prompt=root.ModePads and root.ModePads:FindFirstChild("FFAPrompt"),mode="FFA"},
+        {prompt=root.ModePads and root.ModePads:FindFirstChild("SoloPrompt"),mode="Solo"},
+    }
+    local mapEntries={
+        {prompt=root.MapPads and root.MapPads:FindFirstChild("WorldPrompt"),map="World"},
+        {prompt=root.MapPads and root.MapPads:FindFirstChild("EuropePrompt"),map="Europe"},
+        {prompt=root.MapPads and root.MapPads:FindFirstChild("AsiaPrompt"),map="Asia"},
+        {prompt=root.MapPads and root.MapPads:FindFirstChild("MENAPrompt"),map="MENA"},
+    }
+
+    for _,entry in ipairs(modeEntries) do
+        if entry.prompt then
+            entry.prompt.Triggered:Connect(function(player)
                 if worldActive then
-                    notice(player,"المباراة بدأت بالفعل.","error")
+                    notice(player,"المباراة بدأت بالفعل. لا يمكن تغيير النمط الآن.","error")
                     return
                 end
-                player:SetAttribute("WorldDominionMode",mode)
-                notice(player,"اخترت "..mode..". الآن اختر الخريطة.","success")
-                setLobbyColor(mode,Color3.fromRGB(244,237,218))
+                player:SetAttribute("WorldDominionMode",entry.mode)
+                notice(player,"تم اختيار "..entry.mode..". الآن اختر الخريطة.","success")
             end)
         end
     end
 
-    local maps={"World","Europe","Asia","MENA"}
-    for _,mapId in ipairs(maps) do
-        local part=root:FindFirstChild(mapId)
-        local click=part and part:FindFirstChildOfClass("ClickDetector")
-        if click then
-            click.MouseClick:Connect(function(player)
+    for _,entry in ipairs(mapEntries) do
+        if entry.prompt then
+            entry.prompt.Triggered:Connect(function(player)
                 if worldActive then
-                    notice(player,"المباراة بدأت بالفعل.","error")
+                    notice(player,"المباراة بدأت بالفعل. انضم إلى المباراة الحالية من نفس الإعدادات.","error")
                     return
                 end
-                startMatch(player,mapId)
+                local definition=MapRegistry.get(entry.map)
+                player:SetAttribute("WorldDominionMap",definition.id)
+                notice(player,"تم اختيار "..definition.title..". اقترب من ENTER WORLD للدخول.","success")
             end)
         end
+    end
+
+    local enterPrompt=root:FindFirstChild("EnterPrompt")
+    if enterPrompt then
+        enterPrompt.Triggered:Connect(function(player)
+            local mode=player:GetAttribute("WorldDominionMode") or "FFA"
+            local mapId=player:GetAttribute("WorldDominionMap") or MapRegistry.Default
+            player:SetAttribute("WorldDominionMode",mode)
+            player:SetAttribute("WorldDominionMap",mapId)
+            startMatch(player,mapId)
+        end)
+    end
+
+    local sign=root:FindFirstChild("House404")
+    local signGui=sign and sign:FindFirstChild("SignGui")
+    local signText=signGui and signGui:FindFirstChild("SignText")
+    if signText and signText:IsA("TextLabel") then
+        signText.Text="404 FOUND"
+    end
+
+    for _,entry in ipairs({
+        {"Teams",root.ModePads and root.ModePads:FindFirstChild("TeamsBillboard"),root.ModePads and root.ModePads:FindFirstChild("Teams")},
+        {"FFA",root.ModePads and root.ModePads:FindFirstChild("FFABillboard"),root.ModePads and root.ModePads:FindFirstChild("FFA")},
+        {"Solo",root.ModePads and root.ModePads:FindFirstChild("SoloBillboard"),root.ModePads and root.ModePads:FindFirstChild("Solo")},
+        {"World",root.MapPads and root.MapPads:FindFirstChild("WorldBillboard"),root.MapPads and root.MapPads:FindFirstChild("World")},
+        {"Europe",root.MapPads and root.MapPads:FindFirstChild("EuropeBillboard"),root.MapPads and root.MapPads:FindFirstChild("Europe")},
+        {"Asia",root.MapPads and root.MapPads:FindFirstChild("AsiaBillboard"),root.MapPads and root.MapPads:FindFirstChild("Asia")},
+        {"MENA",root.MapPads and root.MapPads:FindFirstChild("MENABillboard"),root.MapPads and root.MapPads:FindFirstChild("MENA")},
+    }) do
+        if entry[2] and entry[3] then
+            entry[2].Adornee=entry[3]
+            entry[2].Parent=entry[3]
+        end
+    end
+    local enterBillboard=root.EnterPad and root.EnterPad:FindFirstChild("EnterBillboard")
+    if enterBillboard and root.EnterPad then
+        enterBillboard.Adornee=root.EnterPad
+        enterBillboard.Parent=root.EnterPad
     end
 end)
 
