@@ -68,6 +68,13 @@ mapImage.ImageContent=Content.fromObject(image);mapImage.Parent=mapLayer
 local click=Instance.new("ImageButton")
 click.Size=UDim2.fromScale(1,1);click.BackgroundTransparency=1;click.ImageTransparency=1;click.AutoButtonColor=false;click.ZIndex=3;click.Parent=mapLayer
 
+local effectsLayer=Instance.new("Frame")
+effectsLayer.Name="BattleEffects";effectsLayer.Size=UDim2.fromScale(1,1);effectsLayer.BackgroundTransparency=1
+effectsLayer.ZIndex=5;effectsLayer.Parent=mapLayer
+local labelsLayer=Instance.new("Frame")
+labelsLayer.Name="NationLabels";labelsLayer.Size=UDim2.fromScale(1,1);labelsLayer.BackgroundTransparency=1
+labelsLayer.ZIndex=6;labelsLayer.Parent=mapLayer
+
 local selection=Instance.new("Frame")
 selection.Size=UDim2.fromOffset(16,16);selection.AnchorPoint=Vector2.new(.5,.5);selection.BackgroundTransparency=1
 selection.BorderSizePixel=2;selection.BorderColor3=Color3.fromRGB(255,255,255);selection.Visible=false;selection.ZIndex=4;selection.Parent=mapLayer
@@ -205,6 +212,74 @@ local function applyTransform()
     mapLayer.Position=UDim2.new(.5,pan.X,.5,pan.Y)
 end
 
+local function clearChildren(frame)
+    for _,child in ipairs(frame:GetChildren()) do child:Destroy() end
+end
+
+local function renderBattleOverlay()
+    clearChildren(effectsLayer)
+    clearChildren(labelsLayer)
+    if not snapshot then return end
+
+    for _,attack in ipairs(snapshot.attacks or {}) do
+        local sx=(attack.sourceX or 1)-.5
+        local sy=(attack.sourceY or 1)-.5
+        local tx=(attack.targetX or 1)-.5
+        local ty=(attack.targetY or 1)-.5
+        local dx=(tx-sx)/W
+        local dy=(ty-sy)/H
+        local length=math.sqrt(dx*dx+dy*dy)
+        if length>.0001 then
+            local line=Instance.new("Frame")
+            line.AnchorPoint=Vector2.new(0,.5)
+            line.Position=UDim2.new((sx+.5)/W,0,(sy+.5)/H,0)
+            line.Size=UDim2.new(length,0,0,3)
+            line.BackgroundColor3=attack.naval and Color3.fromRGB(70,180,255) or Color3.fromRGB(255,190,70)
+            line.BorderSizePixel=0
+            line.Rotation=math.deg(math.atan2(dy,dx))
+            line.ZIndex=5
+            line.Parent=effectsLayer
+            local tip=Instance.new("TextLabel")
+            tip.Size=UDim2.fromOffset(20,20)
+            tip.AnchorPoint=Vector2.new(.5,.5)
+            tip.Position=UDim2.new((tx+.5)/W,0,(ty+.5)/H,0)
+            tip.BackgroundTransparency=1
+            tip.Text=attack.naval and "⚓" or "➤"
+            tip.TextColor3=line.BackgroundColor3
+            tip.Font=Enum.Font.GothamBlack
+            tip.TextSize=14
+            tip.ZIndex=6
+            tip.Parent=effectsLayer
+        end
+    end
+
+    local entries={}
+    for id,p in pairs(snapshot.players or {}) do
+        if p.alive and p.owned>0 then entries[#entries+1]={id=id,p=p} end
+    end
+    table.sort(entries,function(a,b) return (a.p.owned or 0)>(b.p.owned or 0) end)
+    for i=1,math.min(12,#entries) do
+        local item=entries[i]
+        local p=item.p
+        if p.labelX and p.labelY then
+            local label=Instance.new("TextLabel")
+            label.Size=UDim2.fromOffset(130,22)
+            label.AnchorPoint=Vector2.new(.5,.5)
+            label.Position=UDim2.new(p.labelX/W,0,p.labelY/H,0)
+            label.BackgroundColor3=Color3.fromRGB(5,9,14)
+            label.BackgroundTransparency=.28
+            label.BorderSizePixel=0
+            label.Text=tostring(p.name).."  "..tostring(math.floor(p.owned or 0))
+            label.TextColor3=ownerColor(snapshot.ownerIndexById and snapshot.ownerIndexById[item.id] or 0)
+            label.Font=Enum.Font.GothamBold
+            label.TextSize=9
+            label.ZIndex=6
+            label.Parent=labelsLayer
+            rounded(label)
+        end
+    end
+end
+
 local function screenToTile(pos)
     local abs=click.AbsolutePosition
     local size=click.AbsoluteSize
@@ -284,6 +359,7 @@ Snapshot.OnClientEvent:Connect(function(data)
         row.TextXAlignment=Enum.TextXAlignment.Left;row.ZIndex=22;row.Parent=boardList
     end
     boardList.CanvasSize=UDim2.fromOffset(0,math.max(0,#data.players*25))
+    renderBattleOverlay()
     if data.winner then
         local win=data.players[data.winner]
         notice.Text="🏆 "..tostring(win and win.name or data.winner).." controls 80% of the world."
