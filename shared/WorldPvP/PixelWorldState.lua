@@ -216,7 +216,10 @@ function State:attack(userId,targetId,amountOrRatio)
     local source=target
     local travel=0
     if naval then
-        if not target.isCoastal then return false,"Select land touching your frontier, or a coastal target for a sea attack" end
+        if (n.buildings.Port or 0)<1 then
+            return false,"Build a Port before launching a sea attack"
+        end
+        if not target.isCoastal then return false,"Select a coastal target for a sea attack" end
         local coast,distanceSquared=self:_nearestOwnedCoast(n,target)
         if not coast then return false,"Capture coastal land before launching a sea attack" end
         source=coast
@@ -290,7 +293,7 @@ function State:attack(userId,targetId,amountOrRatio)
         id=self.nextAttack,owner=n.id,target=targetId,targetOwnerId=target.ownerId,
         source=source.id,troops=troops,initialTroops=troops,naval=naval,
         startTime=self.time,arrivalAt=self.time+travel,lastStep=self.time,
-        frontier={targetId},seen={[targetId]=true},
+        frontier={targetId},seen={[targetId]=true},captured={},
     }
     return true,self.nextAttack,troops
 end
@@ -331,26 +334,40 @@ function State:_stepAttack(a)
     local first=self.map:get(a.target)
     local base=first and first.terrain or "Plains"
     local spec=terrainSpec(base)
-    local maxCaptures=clamp(math.floor(a.troops/(spec.TileCost*Rules.Attack.TroopsPerTileStep)),1,Rules.Attack.MaxTilesPerStep)
-    local captured=0
+    -- Grow as a compact wave: one or two cells per tick around the current
+    -- captured body. This prevents spider-like branching.
+    local maxCaptures=clamp(
+        math.floor(a.troops/(spec.TileCost*Rules.Attack.TroopsPerTileStep)),
+        1,
+        math.min(2,Rules.Attack.MaxTilesPerStep)
+    )
 
     for _=1,maxCaptures do
         if #a.frontier==0 or a.troops<=0 then break end
-        -- Prefer frontier pixels with more same-owner neighbours. This expands
-        -- a broad, connected patch rather than a thin random snake.
-        local pick,bestScore=1,-math.huge
+
+        local pick,bestScore=nil,-math.huge
         for index,frontierId in ipairs(a.frontier) do
             local candidate=self.map:get(frontierId)
-            local support=0
             if candidate then
+                local capturedNeighbors=0
+                local attackerNeighbors=0
+                local targetNeighbors=0
                 for _,neighborId in ipairs(candidate.neighbors or {}) do
                     local neighbor=self.map:get(neighborId)
-                    if neighbor and neighbor.ownerId==a.targetOwnerId then support+=1 end
+                    if neighbor then
+                        if a.captured[neighborId] then capturedNeighbors+=1 end
+                        if neighbor.ownerId==n.id then attackerNeighbors+=1 end
+                        if neighbor.ownerId==a.targetOwnerId then targetNeighbors+=1 end
+                    end
+                end
+                local score=capturedNeighbors*20+attackerNeighbors*8+targetNeighbors*2+math.random()*.05
+                if score>bestScore then
+                    pick,bestScore=index,score
                 end
             end
-            local score=support*3+math.random()
-            if score>bestScore then pick,bestScore=index,score end
         end
+
+        if not pick then break end
         local id=table.remove(a.frontier,pick)
         local t=self.map:get(id)
         if t and t.isLand and t.ownerId==a.targetOwnerId and not self:_areAllied(n.id,t.ownerId) then
@@ -361,19 +378,25 @@ function State:_stepAttack(a)
             local pressure=clamp(defense/math.max(1,a.troops),0.6,2)
             local loss=terrain.Magnitude*Rules.Attack.BaseAttackerLossFactor*pressure
                 +Rules.Attack.DefenderDensityFactor*density*terrain.Magnitude
+
             if t.building=="DefensePost" then loss*=Rules.Buildings.DefensePost.DefenseMultiplier end
             if t.building=="SAM" then loss*=Rules.Buildings.SAM.DefenseMultiplier end
             if a.naval and t.building=="Warship" then loss*=Rules.Naval.WarshipDefenseMultiplier end
+
             loss=math.max(1,math.floor(loss))
-            if a.troops<=loss then a.troops=0;return true end
+            if a.troops<=loss then
+                a.troops=0
+                return true
+            end
 
             a.troops-=loss
             if defender and defender~=n then
                 defender.troops=math.max(0,defender.troops-math.max(1,math.floor(defense/math.max(1,defender.owned)*0.35)))
             end
-            self:_captureTile(n,t);captured+=1
 
-            -- Random 8-neighbour frontier growth produces soft, curved edges.
+            self:_captureTile(n,t)
+            a.captured[id]=true
+
             for _,neighborId in ipairs(t.neighbors or {}) do
                 local neighbor=self.map:get(neighborId)
                 if neighbor and neighbor.ownerId==a.targetOwnerId and not a.seen[neighborId] then
@@ -383,139 +406,12 @@ function State:_stepAttack(a)
             end
         end
     end
+
     a.lastStep=self.time
     return #a.frontier==0 or a.troops<=0
 end
 
-function State:_buildForNation(n,t,kind)
-    local spec=Rules.Buildings[kind]
-    if not spec then return false,"Unknown building" end
-    if not t or not t.isLand or t.ownerId~=n.id then return false,"Build only on your land" end
-    if spec.RequiresCoast and not t.isCoastal then return false,"This structure needs a coastal pixel" end
-    if t.building and t.building~=kind then return false,"This pixel already has another building" end
 
-    local current=t.building==kind and math.max(1,t.buildingLevel or 1) or 0
-    local nextLevel=current+1
-    local cost=math.floor(spec.Cost*(current==0 and 1 or nextLevel^1.55))
-    if n.gold<cost then return false,"Not enough gold ("..tostring(cost)..")" end
-    n.gold-=cost
-    if current==0 then
-        n.buildings[kind]=(n.buildings[kind] or 0)+1
-        self.buildingTiles[t.id]=true
-    end
-    n.buildingLevels[kind]=(n.buildingLevels[kind] or 0)+1
-    t.building=kind;t.buildingLevel=nextLevel;self:_markDirty(t.id)
-    return true,{kind=kind,level=nextLevel,cost=cost}
-end
-
-function State:build(userId,tileId,kind)
-    local n=self.byUser[userId]
-    if not n or not n.alive then return false,"Deploy first" end
-    tileId=math.floor(tonumber(tileId) or 0)
-    return self:_buildForNation(n,self.map:get(tileId),tostring(kind))
-end
-
-function State:allianceAction(userId,action,targetId)
-    if not Rules.Alliance.Enabled then return false,"Alliances are disabled" end
-    local n=self.byUser[userId]
-    if not n or not n.alive then return false,"Deploy first" end
-    local target=self.players[tostring(targetId or "")]
-    if not target or not target.alive or target==n then return false,"Invalid nation" end
-
-    if action=="propose" then
-        if target.isAI or not target.userId then return false,"Alliance requests are for human nations" end
-        if self:_areAllied(n.id,target.id) then return false,"Already allied" end
-        local requests=self.allianceRequests[target.id] or {}
-        local count=0;for _ in pairs(requests) do count+=1 end
-        if count>=Rules.Alliance.MaxPendingPerNation then return false,"Too many pending alliance requests" end
-        requests[n.id]=self.time;self.allianceRequests[target.id]=requests
-        return true,target
-    elseif action=="accept" then
-        local requests=self.allianceRequests[n.id]
-        if not requests or not requests[target.id] then return false,"No pending request from that nation" end
-        requests[target.id]=nil;self.alliances[allianceKey(n.id,target.id)]=true
-        return true,target
-    elseif action=="reject" then
-        local requests=self.allianceRequests[n.id]
-        if not requests or not requests[target.id] then return false,"No pending request from that nation" end
-        requests[target.id]=nil;return true,target
-    elseif action=="break" then
-        if not self:_areAllied(n.id,target.id) then return false,"No alliance to break" end
-        self.alliances[allianceKey(n.id,target.id)]=nil;return true,target
-    end
-    return false,"Unknown alliance action"
-end
-
-function State:retreat(userId,attackId)
-    local n=self.byUser[userId]
-    if not n or not n.alive then return false,"Deploy first" end
-    local a=self.attacks[tonumber(attackId)]
-    if not a or a.owner~=n.id then return false,"Attack is no longer active" end
-    local refund=math.floor(a.troops*Rules.Attack.RetreatRefund)
-    n.troops+=refund;self.attacks[a.id]=nil
-    return true,refund
-end
-
-function State:nuke(userId,targetId,weaponKind)
-    local n=self.byUser[userId]
-    if not n or not n.alive then return false,"Deploy first" end
-    local target=self.map:get(math.floor(tonumber(targetId) or 0))
-    if not target or not target.isLand then return false,"Invalid target" end
-    if (n.buildings.MissileSilo or 0)<1 then return false,"Build a Missile Silo first" end
-    weaponKind=Rules.Nuclear.Weapons[weaponKind] and weaponKind or "Atom"
-    local weapon=Rules.Nuclear.Weapons[weaponKind]
-    if n.gold<weapon.Cost then return false,"Not enough gold" end
-    if self.time<n.protectedUntil then return false,"Your nation is protected" end
-    local last=n._lastNuke and n._lastNuke[weaponKind] or -math.huge
-    if last+weapon.CooldownSeconds>self.time then return false,weaponKind.." cooldown active" end
-    local defender=self.players[target.ownerId]
-    if defender and (defender.buildings.SAM or 0)>0 and math.random()<math.min(.75,.18*defender.buildings.SAM) then
-        n.gold-=math.floor(weapon.Cost*.25)
-        n._lastNuke=n._lastNuke or {};n._lastNuke[weaponKind]=self.time
-        return false,"Missile intercepted by enemy SAM network"
-    end
-
-    n.gold-=weapon.Cost
-    n._lastNuke=n._lastNuke or {};n._lastNuke[weaponKind]=self.time
-    n.nukes+=1
-    local radius=weapon.Radius
-    local warheads=weapon.Warheads or 1
-    local impactOffsets={{0,0}}
-    if warheads>1 then
-        impactOffsets={}
-        for i=1,warheads do
-            local angle=(i-1)*math.pi*2/warheads
-            impactOffsets[#impactOffsets+1]={math.floor(math.cos(angle)*radius*.45),math.floor(math.sin(angle)*radius*.45)}
-        end
-    end
-    for _,offset in ipairs(impactOffsets) do
-        local cx,cy=target.x+offset[1],target.y+offset[2]
-        for y=math.max(1,cy-radius),math.min(self.map.height,cy+radius) do
-            for x=math.max(1,cx-radius),math.min(self.map.width,cx+radius) do
-                local dx,dy=x-cx,y-cy
-                if dx*dx+dy*dy<=radius*radius then
-                    local t=self.map:get((y-1)*self.map.width+x)
-                    if t and t.isLand and t.ownerId~=n.id then
-                        if t.building then
-                            local old=self.players[t.ownerId]
-                            if old then
-                                old.buildings[t.building]=math.max(0,(old.buildings[t.building] or 0)-1)
-                                old.buildingLevels[t.building]=math.max(0,(old.buildingLevels[t.building] or 0)-(t.buildingLevel or 1))
-                            end
-                            t.building=nil;t.buildingLevel=0;self.buildingTiles[t.id]=nil
-                        end
-                        local old=self.players[t.ownerId]
-                        if old then old.troops=math.floor(old.troops*(1-weapon.TroopLoss)) end
-                        self:_markDirty(t.id)
-                    end
-                end
-            end
-        end
-    end
-    return true,weaponKind.." strike launched"
-end
-
--- AI construction is server-authoritative and only uses owned pixels.
 function State:_aiBuild(n)
     if not n or not n.alive or not n.isAI then return false end
     local preferred
