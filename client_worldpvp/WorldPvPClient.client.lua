@@ -17,6 +17,7 @@ local Request=remotes:WaitForChild("RequestSnapshot")
 local Snapshot=remotes:WaitForChild("Snapshot")
 local Chunk=remotes:WaitForChild("MapChunk")
 local Notice=remotes:WaitForChild("Notice")
+local EnterWorld=remotes:WaitForChild("EnterWorld")
 
 local W,H=Rules.MapWidth,Rules.MapHeight
 local ZOOM_MIN,ZOOM_MAX=.65,4.5
@@ -58,6 +59,7 @@ local image=AssetService:CreateEditableImage({Size=Vector2.new(W,H)})
 
 local gui=Instance.new("ScreenGui")
 gui.Name="WorldPvP";gui.ResetOnSpawn=false;gui.IgnoreGuiInset=true;gui.DisplayOrder=100
+gui.Enabled=false
 gui.Parent=player:WaitForChild("PlayerGui")
 
 local root=Instance.new("Frame")
@@ -485,6 +487,12 @@ amountBox.FocusLost:Connect(function()
         amountBox.Text=tostring(sendTroops)
     else amountBox.Text=tostring(sendTroops) end
 end)
+EnterWorld.OnClientEvent:Connect(function(data)
+    gui.Enabled=true
+    mapButton.Text=tostring(data and (data.mapTitle or data.mapKey) or "MAP")
+    Request:FireServer()
+end)
+
 amountSlider.MouseButton1Click:Connect(function()
     local steps={1000,5000,10000,25000,50000,100000}
     local next=steps[#steps]
