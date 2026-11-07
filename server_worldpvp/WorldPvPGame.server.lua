@@ -50,10 +50,10 @@ Spawn.OnServerEvent:Connect(function(p,tileId)
     if not ok then notice(p,n,"error");return end
     notice(p,"تم اختيار نقطة البداية. انقر على أرض العدو لإرسال الجيش.","success");broadcast()
 end)
-Attack.OnServerEvent:Connect(function(p,tileId,ratio)
-    local ok,result=world:attack(p.UserId,tonumber(tileId),ratio)
-    if not ok then notice(p,result,"error");return end
-    notice(p,"تم إرسال "..math.floor((tonumber(ratio) or .2)*100).."% من الجيش إلى الجبهة.","success")
+Attack.OnServerEvent:Connect(function(p,tileId,amount)
+    local ok,attackId,sentTroops=world:attack(p.UserId,tonumber(tileId),amount)
+    if not ok then notice(p,attackId,"error");return end
+    notice(p,"تم إرسال "..tostring(math.floor(sentTroops or 0)).." جندي إلى الجبهة.","success")
 end)
 Build.OnServerEvent:Connect(function(p,tileId,kind)
     local ok,msg=world:build(p.UserId,tonumber(tileId),tostring(kind))
