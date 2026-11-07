@@ -128,24 +128,17 @@ local function buildRows(width, height)
     return rows
 end
 
-local function farthestUnused(landCells, used, iteration)
+local function farthestUnused(landCells, used, usedCells, iteration)
     local bestCell = nil
     local bestScore = -math.huge
 
     for _, cell in ipairs(landCells) do
         if not used[cell.id] then
             local nearest = math.huge
-            for usedId in pairs(used) do
-                local other
-                for _, candidate in ipairs(landCells) do
-                    if candidate.id == usedId then
-                        other = candidate
-                        break
-                    end
-                end
-                if other then
-                    local distance = math.abs(cell.x - other.x) + math.abs(cell.y - other.y)
-                    nearest = math.min(nearest, distance)
+            for _, other in ipairs(usedCells) do
+                local distance = math.abs(cell.x - other.x) + math.abs(cell.y - other.y)
+                if distance < nearest then
+                    nearest = distance
                 end
             end
 
@@ -166,6 +159,7 @@ local function farthestUnused(landCells, used, iteration)
 
     if bestCell then
         used[bestCell.id] = true
+        usedCells[#usedCells + 1] = bestCell
     end
     return bestCell
 end
@@ -182,10 +176,11 @@ function Seed.create()
     assert(#landCells >= #NATION_NAMES, "world map does not contain enough land for nation spawns")
 
     local used = {}
+    local usedCells = {}
     local entities = {}
 
     for index, name in ipairs(NATION_NAMES) do
-        local seed = farthestUnused(landCells, used, index)
+        local seed = farthestUnused(landCells, used, usedCells, index)
         assert(seed, "failed to allocate a unique nation spawn")
         local color = COLORS[((index - 1) % #COLORS) + 1]
         entities[#entities + 1] = {
@@ -199,7 +194,7 @@ function Seed.create()
 
     local tribeCount = math.min(100, #landCells - #NATION_NAMES)
     for index = 1, tribeCount do
-        local seed = farthestUnused(landCells, used, index + #NATION_NAMES)
+        local seed = farthestUnused(landCells, used, usedCells, index + #NATION_NAMES)
         if not seed then
             break
         end
