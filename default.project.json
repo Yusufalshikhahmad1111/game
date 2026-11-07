@@ -2,7 +2,6 @@
   "name": "WorldDominion",
   "tree": {
     "$className": "DataModel",
-
     "ReplicatedStorage": {
       "$className": "ReplicatedStorage",
       "Shared": {
@@ -10,12 +9,10 @@
         "$path": "shared"
       }
     },
-
     "ServerScriptService": {
       "$className": "ServerScriptService",
       "$path": "server_worldpvp"
     },
-
     "ServerStorage": {
       "$className": "ServerStorage",
       "Tests": {
@@ -23,12 +20,1042 @@
         "$path": "tests"
       }
     },
-
     "StarterPlayer": {
       "$className": "StarterPlayer",
       "StarterPlayerScripts": {
         "$className": "StarterPlayerScripts",
         "$path": "client_worldpvp"
+      }
+    },
+    "Workspace": {
+      "$className": "Workspace",
+      "$properties": {
+        "Gravity": 196.2,
+        "StreamingEnabled": true
+      },
+      "WorldDominionLobby": {
+        "$className": "Model",
+        "Ground": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Position": [
+              0,
+              -1,
+              25
+            ],
+            "Size": [
+              150,
+              2,
+              115
+            ],
+            "Color": [
+              0.21176470588235294,
+              0.18823529411764706,
+              0.13333333333333333
+            ],
+            "Material": "Slate",
+            "Transparency": 0
+          }
+        },
+        "Plaza": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Position": [
+              0,
+              0.1,
+              38
+            ],
+            "Size": [
+              112,
+              0.4,
+              62
+            ],
+            "Color": [
+              0.3607843137254902,
+              0.3215686274509804,
+              0.23529411764705882
+            ],
+            "Material": "Cobblestone",
+            "Transparency": 0
+          }
+        },
+        "HouseFoundation": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Position": [
+              0,
+              0.6,
+              2
+            ],
+            "Size": [
+              44,
+              1,
+              32
+            ],
+            "Color": [
+              0.30196078431372547,
+              0.2235294117647059,
+              0.15294117647058825
+            ],
+            "Material": "WoodPlanks",
+            "Transparency": 0
+          }
+        },
+        "FrontWall": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Position": [
+              0,
+              7,
+              17
+            ],
+            "Size": [
+              44,
+              13,
+              1.2
+            ],
+            "Color": [
+              0.27058823529411763,
+              0.20392156862745098,
+              0.14901960784313725
+            ],
+            "Material": "WoodPlanks",
+            "Transparency": 0
+          }
+        },
+        "BackWall": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Position": [
+              0,
+              7,
+              -13
+            ],
+            "Size": [
+              44,
+              13,
+              1.2
+            ],
+            "Color": [
+              0.27058823529411763,
+              0.20392156862745098,
+              0.14901960784313725
+            ],
+            "Material": "WoodPlanks",
+            "Transparency": 0
+          }
+        },
+        "LeftWall": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Position": [
+              -21.4,
+              7,
+              2
+            ],
+            "Size": [
+              1.2,
+              13,
+              30
+            ],
+            "Color": [
+              0.27058823529411763,
+              0.20392156862745098,
+              0.14901960784313725
+            ],
+            "Material": "WoodPlanks",
+            "Transparency": 0
+          }
+        },
+        "RightWall": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Position": [
+              21.4,
+              7,
+              2
+            ],
+            "Size": [
+              1.2,
+              13,
+              30
+            ],
+            "Color": [
+              0.27058823529411763,
+              0.20392156862745098,
+              0.14901960784313725
+            ],
+            "Material": "WoodPlanks",
+            "Transparency": 0
+          }
+        },
+        "Roof": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Position": [
+              0,
+              14,
+              2
+            ],
+            "Size": [
+              48,
+              2,
+              34
+            ],
+            "Color": [
+              0.16470588235294117,
+              0.13333333333333333,
+              0.09411764705882353
+            ],
+            "Material": "Slate",
+            "Transparency": 0
+          }
+        },
+        "Porch": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Position": [
+              0,
+              1.6,
+              22
+            ],
+            "Size": [
+              28,
+              1,
+              8
+            ],
+            "Color": [
+              0.4117647058823529,
+              0.3058823529411765,
+              0.19215686274509805
+            ],
+            "Material": "WoodPlanks",
+            "Transparency": 0
+          }
+        },
+        "Door": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Position": [
+              0,
+              5.6,
+              17.8
+            ],
+            "Size": [
+              7,
+              10,
+              0.8
+            ],
+            "Color": [
+              0.1803921568627451,
+              0.12156862745098039,
+              0.08627450980392157
+            ],
+            "Material": "Wood",
+            "Transparency": 0
+          }
+        },
+        "DoorTrim": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Position": [
+              0,
+              5.6,
+              18.25
+            ],
+            "Size": [
+              9,
+              11,
+              0.35
+            ],
+            "Color": [
+              0.7568627450980392,
+              0.5882352941176471,
+              0.26666666666666666
+            ],
+            "Material": "Metal",
+            "Transparency": 0
+          }
+        },
+        "WindowL": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Position": [
+              -12,
+              7.6,
+              17.65
+            ],
+            "Size": [
+              7,
+              5,
+              0.5
+            ],
+            "Color": [
+              0.5568627450980392,
+              0.43529411764705883,
+              0.24705882352941178
+            ],
+            "Material": "Glass",
+            "Transparency": 0
+          }
+        },
+        "WindowR": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Position": [
+              12,
+              7.6,
+              17.65
+            ],
+            "Size": [
+              7,
+              5,
+              0.5
+            ],
+            "Color": [
+              0.5568627450980392,
+              0.43529411764705883,
+              0.24705882352941178
+            ],
+            "Material": "Glass",
+            "Transparency": 0
+          }
+        },
+        "HouseSign": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Position": [
+              0,
+              15.7,
+              17.2
+            ],
+            "Size": [
+              18,
+              5,
+              0.6
+            ],
+            "Color": [
+              0.21568627450980393,
+              0.15294117647058825,
+              0.09803921568627451
+            ],
+            "Material": "WoodPlanks"
+          },
+          "SurfaceGui": {
+            "$className": "SurfaceGui",
+            "$properties": {
+              "Face": "Front",
+              "AlwaysOnTop": true,
+              "LightInfluence": 0
+            },
+            "Label": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  [
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0
+                  ]
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "404 FOUND",
+                "TextColor3": [
+                  0.9607843137254902,
+                  0.9098039215686274,
+                  0.7686274509803922
+                ],
+                "TextScaled": true,
+                "Font": "GothamBlack",
+                "TextStrokeTransparency": 0.55
+              }
+            }
+          }
+        },
+        "Spawn": {
+          "$className": "SpawnLocation",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Neutral": true,
+            "AllowTeamChangeOnTouch": false,
+            "Position": [
+              0,
+              1.5,
+              49
+            ],
+            "Size": [
+              8,
+              1,
+              8
+            ],
+            "Color": [
+              0.5372549019607843,
+              0.6627450980392157,
+              0.34509803921568627
+            ],
+            "Material": "Grass"
+          }
+        },
+        "ModeTitle": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Position": [
+              0,
+              7.5,
+              29
+            ],
+            "Size": [
+              24,
+              4,
+              0.5
+            ],
+            "Color": [
+              0.13725490196078433,
+              0.1450980392156863,
+              0.10588235294117647
+            ],
+            "Material": "WoodPlanks"
+          },
+          "SurfaceGui": {
+            "$className": "SurfaceGui",
+            "$properties": {
+              "Face": "Front",
+              "AlwaysOnTop": true,
+              "LightInfluence": 0
+            },
+            "Label": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  [
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0
+                  ]
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "CHOOSE YOUR GAME",
+                "TextColor3": [
+                  0.9568627450980393,
+                  0.9294117647058824,
+                  0.8549019607843137
+                ],
+                "TextScaled": true,
+                "Font": "GothamBlack",
+                "TextStrokeTransparency": 0.55
+              }
+            }
+          }
+        },
+        "Teams": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Position": [
+              -34,
+              3,
+              29
+            ],
+            "Size": [
+              17,
+              6,
+              1
+            ],
+            "Color": [
+              0.24705882352941178,
+              0.33725490196078434,
+              0.17254901960784313
+            ],
+            "Material": "WoodPlanks"
+          },
+          "SurfaceGui": {
+            "$className": "SurfaceGui",
+            "$properties": {
+              "Face": "Front",
+              "AlwaysOnTop": true,
+              "LightInfluence": 0
+            },
+            "Label": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  [
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0
+                  ]
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "TEAMS",
+                "TextColor3": [
+                  0.9568627450980393,
+                  0.9294117647058824,
+                  0.8549019607843137
+                ],
+                "TextScaled": true,
+                "Font": "GothamBlack",
+                "TextStrokeTransparency": 0.55
+              }
+            }
+          },
+          "ClickDetector": {
+            "$className": "ClickDetector",
+            "$properties": {
+              "MaxActivationDistance": 48
+            }
+          }
+        },
+        "FFA": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Position": [
+              0,
+              3,
+              29
+            ],
+            "Size": [
+              17,
+              6,
+              1
+            ],
+            "Color": [
+              0.43529411764705883,
+              0.3215686274509804,
+              0.1607843137254902
+            ],
+            "Material": "WoodPlanks"
+          },
+          "SurfaceGui": {
+            "$className": "SurfaceGui",
+            "$properties": {
+              "Face": "Front",
+              "AlwaysOnTop": true,
+              "LightInfluence": 0
+            },
+            "Label": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  [
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0
+                  ]
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "WORLD / FFA",
+                "TextColor3": [
+                  0.9568627450980393,
+                  0.9294117647058824,
+                  0.8549019607843137
+                ],
+                "TextScaled": true,
+                "Font": "GothamBlack",
+                "TextStrokeTransparency": 0.55
+              }
+            }
+          },
+          "ClickDetector": {
+            "$className": "ClickDetector",
+            "$properties": {
+              "MaxActivationDistance": 48
+            }
+          }
+        },
+        "Solo": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Position": [
+              34,
+              3,
+              29
+            ],
+            "Size": [
+              17,
+              6,
+              1
+            ],
+            "Color": [
+              0.5058823529411764,
+              0.2784313725490196,
+              0.21568627450980393
+            ],
+            "Material": "WoodPlanks"
+          },
+          "SurfaceGui": {
+            "$className": "SurfaceGui",
+            "$properties": {
+              "Face": "Front",
+              "AlwaysOnTop": true,
+              "LightInfluence": 0
+            },
+            "Label": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  [
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0
+                  ]
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "SOLO",
+                "TextColor3": [
+                  0.9568627450980393,
+                  0.9294117647058824,
+                  0.8549019607843137
+                ],
+                "TextScaled": true,
+                "Font": "GothamBlack",
+                "TextStrokeTransparency": 0.55
+              }
+            }
+          },
+          "ClickDetector": {
+            "$className": "ClickDetector",
+            "$properties": {
+              "MaxActivationDistance": 48
+            }
+          }
+        },
+        "MapTitle": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Position": [
+              0,
+              7.5,
+              55
+            ],
+            "Size": [
+              24,
+              4,
+              0.5
+            ],
+            "Color": [
+              0.13725490196078433,
+              0.1450980392156863,
+              0.10588235294117647
+            ],
+            "Material": "WoodPlanks"
+          },
+          "SurfaceGui": {
+            "$className": "SurfaceGui",
+            "$properties": {
+              "Face": "Front",
+              "AlwaysOnTop": true,
+              "LightInfluence": 0
+            },
+            "Label": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  [
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0
+                  ]
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "THEN CHOOSE MAP",
+                "TextColor3": [
+                  0.9568627450980393,
+                  0.9294117647058824,
+                  0.8549019607843137
+                ],
+                "TextScaled": true,
+                "Font": "GothamBlack",
+                "TextStrokeTransparency": 0.55
+              }
+            }
+          }
+        },
+        "World": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Position": [
+              -42,
+              3,
+              56
+            ],
+            "Size": [
+              18,
+              7,
+              1
+            ],
+            "Color": [
+              0.22745098039215686,
+              0.30196078431372547,
+              0.16470588235294117
+            ],
+            "Material": "WoodPlanks"
+          },
+          "SurfaceGui": {
+            "$className": "SurfaceGui",
+            "$properties": {
+              "Face": "Front",
+              "AlwaysOnTop": true,
+              "LightInfluence": 0
+            },
+            "Label": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  [
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0
+                  ]
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "WORLD",
+                "TextColor3": [
+                  0.9568627450980393,
+                  0.9294117647058824,
+                  0.8549019607843137
+                ],
+                "TextScaled": true,
+                "Font": "GothamBlack",
+                "TextStrokeTransparency": 0.55
+              }
+            }
+          },
+          "ClickDetector": {
+            "$className": "ClickDetector",
+            "$properties": {
+              "MaxActivationDistance": 48
+            }
+          }
+        },
+        "Europe": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Position": [
+              -14,
+              3,
+              56
+            ],
+            "Size": [
+              18,
+              7,
+              1
+            ],
+            "Color": [
+              0.3686274509803922,
+              0.27058823529411763,
+              0.17254901960784313
+            ],
+            "Material": "WoodPlanks"
+          },
+          "SurfaceGui": {
+            "$className": "SurfaceGui",
+            "$properties": {
+              "Face": "Front",
+              "AlwaysOnTop": true,
+              "LightInfluence": 0
+            },
+            "Label": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  [
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0
+                  ]
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "EUROPE",
+                "TextColor3": [
+                  0.9568627450980393,
+                  0.9294117647058824,
+                  0.8549019607843137
+                ],
+                "TextScaled": true,
+                "Font": "GothamBlack",
+                "TextStrokeTransparency": 0.55
+              }
+            }
+          },
+          "ClickDetector": {
+            "$className": "ClickDetector",
+            "$properties": {
+              "MaxActivationDistance": 48
+            }
+          }
+        },
+        "Asia": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Position": [
+              14,
+              3,
+              56
+            ],
+            "Size": [
+              18,
+              7,
+              1
+            ],
+            "Color": [
+              0.4666666666666667,
+              0.34509803921568627,
+              0.18823529411764706
+            ],
+            "Material": "WoodPlanks"
+          },
+          "SurfaceGui": {
+            "$className": "SurfaceGui",
+            "$properties": {
+              "Face": "Front",
+              "AlwaysOnTop": true,
+              "LightInfluence": 0
+            },
+            "Label": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  [
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0
+                  ]
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "ASIA",
+                "TextColor3": [
+                  0.9568627450980393,
+                  0.9294117647058824,
+                  0.8549019607843137
+                ],
+                "TextScaled": true,
+                "Font": "GothamBlack",
+                "TextStrokeTransparency": 0.55
+              }
+            }
+          },
+          "ClickDetector": {
+            "$className": "ClickDetector",
+            "$properties": {
+              "MaxActivationDistance": 48
+            }
+          }
+        },
+        "MENA": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Position": [
+              42,
+              3,
+              56
+            ],
+            "Size": [
+              18,
+              7,
+              1
+            ],
+            "Color": [
+              0.4392156862745098,
+              0.2549019607843137,
+              0.17647058823529413
+            ],
+            "Material": "WoodPlanks"
+          },
+          "SurfaceGui": {
+            "$className": "SurfaceGui",
+            "$properties": {
+              "Face": "Front",
+              "AlwaysOnTop": true,
+              "LightInfluence": 0
+            },
+            "Label": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  [
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0
+                  ]
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "MIDDLE EAST",
+                "TextColor3": [
+                  0.9568627450980393,
+                  0.9294117647058824,
+                  0.8549019607843137
+                ],
+                "TextScaled": true,
+                "Font": "GothamBlack",
+                "TextStrokeTransparency": 0.55
+              }
+            }
+          },
+          "ClickDetector": {
+            "$className": "ClickDetector",
+            "$properties": {
+              "MaxActivationDistance": 48
+            }
+          }
+        },
+        "WelcomeSign": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Position": [
+              0,
+              6.8,
+              72
+            ],
+            "Size": [
+              36,
+              7,
+              0.8
+            ],
+            "Color": [
+              0.10980392156862745,
+              0.12156862745098039,
+              0.09019607843137255
+            ],
+            "Material": "WoodPlanks"
+          },
+          "SurfaceGui": {
+            "$className": "SurfaceGui",
+            "$properties": {
+              "Face": "Front",
+              "AlwaysOnTop": true,
+              "LightInfluence": 0
+            },
+            "Label": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  [
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0
+                  ]
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "WORLD DOMINION",
+                "TextColor3": [
+                  0.9568627450980393,
+                  0.9294117647058824,
+                  0.8549019607843137
+                ],
+                "TextScaled": true,
+                "Font": "GothamBlack",
+                "TextStrokeTransparency": 0.55
+              }
+            }
+          }
+        }
+      }
+    },
+    "Lighting": {
+      "$className": "Lighting",
+      "$properties": {
+        "Ambient": [
+          0.3137254901960784,
+          0.27450980392156865,
+          0.19607843137254902
+        ],
+        "OutdoorAmbient": [
+          0.4117647058823529,
+          0.34509803921568627,
+          0.2196078431372549
+        ],
+        "Brightness": 2,
+        "ClockTime": 17.2,
+        "GlobalShadows": true,
+        "Technology": "ShadowMap",
+        "FogColor": [
+          0.3215686274509804,
+          0.27058823529411763,
+          0.18823529411764706
+        ],
+        "FogStart": 80,
+        "FogEnd": 700
       }
     }
   }
