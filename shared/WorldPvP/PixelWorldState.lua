@@ -203,8 +203,6 @@ function State:attack(userId,targetId,amountOrRatio)
     local n=self.byUser[userId] or self.players[userId]
     if not n or not n.alive then return false,"Your nation has been eliminated" end
 
-    -- Spawn protection protects the new nation from incoming attacks only.
-    -- It must never prevent the owner from expanding during the protection window.
     targetId=math.floor(tonumber(targetId) or 0)
     local target=self.map:get(targetId)
     if not target or not target.isLand then return false,"Target must be land" end
@@ -226,8 +224,6 @@ function State:attack(userId,targetId,amountOrRatio)
         travel=math.max(Rules.Naval.MinimumTravelSeconds,math.sqrt(distanceSquared)*Rules.Naval.SecondsPerPixel/speed)
     end
 
-    -- Human client sends an exact troop count. AI callers may still pass a
-    -- 0..1 ratio, preserving their existing decision logic.
     local requested=tonumber(amountOrRatio)
     local troops
     if requested and requested>1 then
@@ -236,7 +232,56 @@ function State:attack(userId,targetId,amountOrRatio)
         local ratio=clamp(requested or Rules.DefaultAttackRatio,Rules.MinimumAttackRatio,Rules.MaximumAttackRatio)
         troops=math.floor(n.troops*ratio)
     end
-    if troops<Rules.Attack.MinimumCommit then return false,"You need at least "..tostring(Rules.Attack.MinimumCommit).." troops to attack" end
+    if troops<Rules.Attack.MinimumCommit then
+        return false,"You need at least "..tostring(Rules.Attack.MinimumCommit).." troops to attack"
+    end
+
+    -- Simple-mode front discipline: one active attack per nation. New
+    -- troops may reinforce that attack only when the selected target touches
+    -- its current connected frontier. This prevents tree-like multi-front
+    -- expansion and keeps the player's territory growing as one patch.
+    local activeId,active
+    if (Rules.Attack.MaxConcurrentPerNation or 1)<=1 then
+        for id,current in pairs(self.attacks) do
+            if current.owner==n.id then
+                activeId,active=id,current
+                break
+            end
+        end
+    end
+
+    if active then
+        if active.naval or naval then
+            return false,"Finish the current front before opening another attack"
+        end
+        if target.ownerId~=active.targetOwnerId then
+            return false,"Finish the current enemy front first"
+        end
+        if not active.seen[targetId] then
+            local connected=false
+            for seenId in pairs(active.seen) do
+                local seenTile=self.map:get(seenId)
+                if seenTile then
+                    for _,neighborId in ipairs(seenTile.neighbors or {}) do
+                        if neighborId==targetId then
+                            connected=true
+                            break
+                        end
+                    end
+                end
+                if connected then break end
+            end
+            if not connected then
+                return false,"Select a pixel touching your current attack front"
+            end
+            active.seen[targetId]=true
+            active.frontier[#active.frontier+1]=targetId
+        end
+        n.troops-=troops
+        active.troops+=troops
+        active.initialTroops+=troops
+        return true,activeId,troops
+    end
 
     n.troops-=troops
     n.attacks+=1
@@ -249,6 +294,7 @@ function State:attack(userId,targetId,amountOrRatio)
     }
     return true,self.nextAttack,troops
 end
+
 
 function State:_captureTile(n,t)
     local oldId=t.ownerId

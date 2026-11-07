@@ -57,6 +57,7 @@ Rules.Attack = {
     TroopsPerTileStep = 420,
     RetreatRefund = 0.75,
     MinimumCommit = 100,
+    MaxConcurrentPerNation = 1,
 }
 
 Rules.Naval = {
@@ -103,14 +104,14 @@ Rules.Buildings = {
 Rules.AI = {
     NationCount = 88,
     TribeCount = 140,
-    NationThinkMin = 2.5,
-    NationThinkMax = 5,
-    TribeThinkMin = 5,
-    TribeThinkMax = 10,
-    NationAttackRatio = 0.06,
-    TribeAttackRatio = 0.035,
-    MinimumAttackTroops = 500,
-    BuildThinkSeconds = 12,
+    NationThinkMin = 5,
+    NationThinkMax = 9,
+    TribeThinkMin = 8,
+    TribeThinkMax = 14,
+    NationAttackRatio = 0.025,
+    TribeAttackRatio = 0.012,
+    MinimumAttackTroops = 2500,
+    BuildThinkSeconds = 24,
 }
 
 Rules.Alliance = {

@@ -116,7 +116,10 @@ end
 local mapButton=button(top,"MAP",UDim2.new(1,-122,0,12),UDim2.fromOffset(48,34),function() end)
 mapButton.BackgroundColor3=THEME.Gold
 local function applyTransform()
-    mapLayer.Size=UDim2.fromScale(zoom,zoom)
+    -- Keep each source pixel at native size when zoom=1. The old scale-to-
+    -- viewport behavior stretched 1024x512 into the screen and made borders
+    -- look like huge blocks.
+    mapLayer.Size=UDim2.fromOffset(W*zoom,H*zoom)
     mapLayer.Position=UDim2.new(.5,pan.X,.5,pan.Y)
 end
 
