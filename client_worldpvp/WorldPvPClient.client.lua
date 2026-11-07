@@ -28,6 +28,10 @@ local snapshot=nil
 local myId=nil
 local selectedTile=nil
 local ratio=.20
+local sendTroops=5000
+local myTroops=0
+local myMaxTroops=1
+local regenPerSecond=0
 local ownerByTile={}
 local landByTile={}
 local terrainByTile={}
@@ -115,20 +119,39 @@ dockTitle.Size=UDim2.fromOffset(112,78);dockTitle.Position=UDim2.fromOffset(12,0
 dockTitle.Text="ARMY\nCOMMAND";dockTitle.Font=Enum.Font.GothamBlack;dockTitle.TextSize=13;dockTitle.TextColor3=Color3.fromRGB(230,237,246)
 dockTitle.TextXAlignment=Enum.TextXAlignment.Left;dockTitle.TextYAlignment=Enum.TextYAlignment.Center;dockTitle.ZIndex=21;dockTitle.Parent=dock
 
-local ratioButtons={}
-for i,v in ipairs({.05,.10,.20,.35,.50,1}) do
-    local b=button(dock,tostring(math.floor(v*100)).."%",UDim2.fromOffset(126+(i-1)*47,35),UDim2.fromOffset(43,34),function()
-        ratio=v
-        for _,x in ipairs(ratioButtons) do x.BackgroundColor3=Color3.fromRGB(25,38,52) end
-        b.BackgroundColor3=Color3.fromRGB(44,106,164)
-    end)
-    ratioButtons[#ratioButtons+1]=b
-    if v==ratio then b.BackgroundColor3=Color3.fromRGB(44,106,164) end
-end
+local armyLabel=Instance.new("TextLabel")
+armyLabel.Size=UDim2.fromOffset(270,20);armyLabel.Position=UDim2.fromOffset(126,5);armyLabel.BackgroundTransparency=1
+armyLabel.Text="ARMY  0 / 0";armyLabel.Font=Enum.Font.GothamBold;armyLabel.TextSize=10;armyLabel.TextColor3=Color3.fromRGB(128,149,170)
+armyLabel.TextXAlignment=Enum.TextXAlignment.Left;armyLabel.ZIndex=21;armyLabel.Parent=dock
+
+local meter=Instance.new("Frame")
+meter.Size=UDim2.fromOffset(270,8);meter.Position=UDim2.fromOffset(126,25);meter.BackgroundColor3=Color3.fromRGB(25,38,52)
+meter.BorderSizePixel=0;meter.ZIndex=21;meter.Parent=dock;rounded(meter)
+local meterFill=Instance.new("Frame")
+meterFill.Size=UDim2.fromScale(0,1);meterFill.BackgroundColor3=Color3.fromRGB(52,156,226)
+meterFill.BorderSizePixel=0;meterFill.ZIndex=22;meterFill.Parent=meter;rounded(meterFill)
+
+local amountBox=Instance.new("TextBox")
+amountBox.Size=UDim2.fromOffset(92,34);amountBox.Position=UDim2.fromOffset(405,35)
+amountBox.BackgroundColor3=Color3.fromRGB(25,38,52);amountBox.BorderSizePixel=0
+amountBox.Text="5000";amountBox.PlaceholderText="Troops";amountBox.TextColor3=Color3.fromRGB(237,243,249)
+amountBox.Font=Enum.Font.GothamBold;amountBox.TextSize=11;amountBox.ClearTextOnFocus=false
+amountBox.ZIndex=30;amountBox.Parent=dock;rounded(amountBox)
+
+local amountSlider=Instance.new("TextButton")
+amountSlider.Size=UDim2.fromOffset(210,34);amountSlider.Position=UDim2.fromOffset(505,35)
+amountSlider.BackgroundColor3=Color3.fromRGB(25,38,52);amountSlider.BorderSizePixel=0
+amountSlider.Text="−   5k    10k    25k    50k   +";amountSlider.TextColor3=Color3.fromRGB(205,217,230)
+amountSlider.Font=Enum.Font.GothamBold;amountSlider.TextSize=10;amountSlider.ZIndex=30;amountSlider.Parent=dock;rounded(amountSlider)
+
 local sendLabel=Instance.new("TextLabel")
 sendLabel.Size=UDim2.fromOffset(260,24);sendLabel.Position=UDim2.fromOffset(126,7);sendLabel.BackgroundTransparency=1
 sendLabel.Text="SEND ARMY";sendLabel.Font=Enum.Font.GothamBold;sendLabel.TextSize=10;sendLabel.TextColor3=Color3.fromRGB(128,149,170)
 sendLabel.TextXAlignment=Enum.TextXAlignment.Left;sendLabel.ZIndex=21;sendLabel.Parent=dock
+
+local sendButton=button(dock,"SEND",UDim2.new(1,-84,0,60),UDim2.fromOffset(72,34),function()
+    if selectedTile and myId then Attack:FireServer(selectedTile,sendTroops) end
+end)
 
 local selectedLabel=Instance.new("TextLabel")
 selectedLabel.Size=UDim2.new(0,245,0,52);selectedLabel.Position=UDim2.new(1,-640,0,12);selectedLabel.BackgroundTransparency=1
@@ -337,6 +360,13 @@ Snapshot.OnClientEvent:Connect(function(data)
     for id,p in pairs(data.players or {}) do if p.userId==player.UserId then myId=id;break end end
     if myId and data.players[myId] then
         local me=data.players[myId]
+        myTroops=tonumber(me.troops) or 0
+        myMaxTroops=math.max(1,tonumber(me.maxTroops) or myTroops)
+        regenPerSecond=tonumber(me.regenPerSecond) or 0
+        sendTroops=math.floor(math.clamp(tonumber(sendTroops) or 5000,100,math.max(100,myTroops)))
+        amountBox.Text=tostring(sendTroops)
+        armyLabel.Text="ARMY  "..math.floor(myTroops).." / "..math.floor(myMaxTroops).."   +"..math.floor(regenPerSecond).."/s"
+        meterFill.Size=UDim2.fromScale(math.clamp(myTroops/myMaxTroops,0,1),1)
         topStats.Text="⚔ "..math.floor(me.troops).."    🪙 "..math.floor(me.gold).."    ▣ "..me.owned.." / "..data.totalLand.."    • "..tostring(me.name)
     else
         topStats.Text="DEPLOY • "..tostring(data.width).." × "..tostring(data.height).." PIXELS"
@@ -371,6 +401,20 @@ Chunk.OnClientEvent:Connect(paintChunk)
 Notice.OnClientEvent:Connect(function(data)
     notice.Text=data.message or ""
     notice.TextColor3=data.kind=="error" and Color3.fromRGB(255,135,135) or Color3.fromRGB(173,231,190)
+end)
+
+amountBox.FocusLost:Connect(function()
+    local value=tonumber(amountBox.Text)
+    if value then
+        sendTroops=math.floor(math.clamp(value,100,math.max(100,myTroops)))
+        amountBox.Text=tostring(sendTroops)
+    else amountBox.Text=tostring(sendTroops) end
+end)
+amountSlider.MouseButton1Click:Connect(function()
+    local steps={1000,5000,10000,25000,50000,100000}
+    local next=steps[#steps]
+    for _,v in ipairs(steps) do if v>sendTroops then next=v;break end end
+    sendTroops=math.min(next,math.max(100,myTroops));amountBox.Text=tostring(sendTroops)
 end)
 
 applyTransform()
