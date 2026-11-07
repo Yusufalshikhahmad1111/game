@@ -5,14 +5,15 @@ Players.CharacterAutoLoads=false
 local Shared=ReplicatedStorage:WaitForChild("Shared")
 local State=require(Shared.WorldPvP.PixelWorldState)
 local Rules=require(Shared.WorldPvP.Rules)
-local world=State.new()
+local MapRegistry=require(Shared.WorldPvP.MapRegistry)
+local world=State.new({mapKey=MapRegistry.Default})
 local remotes=ReplicatedStorage:FindFirstChild("WorldPvPRemotes") or Instance.new("Folder")
 remotes.Name="WorldPvPRemotes";remotes.Parent=ReplicatedStorage
 local function event(name)
     local e=remotes:FindFirstChild(name) or Instance.new("RemoteEvent")
     e.Name=name;e.Parent=remotes;return e
 end
-local Spawn=event("Spawn");local Attack=event("Attack");local Build=event("Build");local Nuke=event("Nuke")
+local Spawn=event("Spawn");local Attack=event("Attack");local Build=event("Build");local Nuke=event("Nuke");local SelectMap=event("SelectMap")
 local Request=event("RequestSnapshot");local Snapshot=event("Snapshot");local Chunk=event("MapChunk");local Notice=event("Notice")
 local function sendMetadata(p) Snapshot:FireClient(p,world:metadataSnapshot()) end
 local function sendChunk(p,cx,cy)
@@ -45,6 +46,24 @@ local function broadcast()
     for _,p in ipairs(Players:GetPlayers()) do Snapshot:FireClient(p,data) end
 end
 local function notice(p,msg,kind) Notice:FireClient(p,{message=msg,kind=kind or "info"}) end
+
+SelectMap.OnServerEvent:Connect(function(p,mapId)
+    if next(world.byUser)~=nil then
+        notice(p,"لا يمكن تغيير الخريطة بعد بدء المباراة.","error")
+        return
+    end
+    local definition=MapRegistry.get(mapId)
+    if not definition then
+        notice(p,"الخريطة غير موجودة.","error")
+        return
+    end
+    world=State.new({mapKey=definition.id})
+    for _,player in ipairs(Players:GetPlayers()) do
+        sendWorld(player)
+        notice(player,"تم تحميل خريطة "..definition.title..". اختر نقطة بداية.","success")
+    end
+end)
+
 Spawn.OnServerEvent:Connect(function(p,tileId)
     local ok,n=world:spawnHuman(p.UserId,p.DisplayName or p.Name,tonumber(tileId))
     if not ok then notice(p,n,"error");return end
@@ -76,4 +95,4 @@ task.spawn(function()
         if now>=nextBroadcast then nextBroadcast=now+Rules.SnapshotSeconds;broadcast() end
     end
 end)
-print("[WorldPvP] Pixel World online | "..world.map.width.."x"..world.map.height.." | direct start | no lobby | no avatars")
+print("[WorldPvP] Pixel World online | "..world.mapKey.." | "..world.map.width.."x"..world.map.height.." | direct start | no lobby | no avatars")
