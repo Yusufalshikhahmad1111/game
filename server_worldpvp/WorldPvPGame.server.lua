@@ -309,15 +309,15 @@ task.defer(function()
     end
 
     local modeEntries={
-        {prompt=root.ModePads and root.ModePads:FindFirstChild("TeamsPrompt"),mode="Teams"},
-        {prompt=root.ModePads and root.ModePads:FindFirstChild("FFAPrompt"),mode="FFA"},
-        {prompt=root.ModePads and root.ModePads:FindFirstChild("SoloPrompt"),mode="Solo"},
+        {prompt=root.ModePads and root.ModePads.Teams and root.ModePads.Teams:FindFirstChild("TeamsPrompt"),mode="Teams"},
+        {prompt=root.ModePads and root.ModePads.FFA and root.ModePads.FFA:FindFirstChild("FFAPrompt"),mode="FFA"},
+        {prompt=root.ModePads and root.ModePads.Solo and root.ModePads.Solo:FindFirstChild("SoloPrompt"),mode="Solo"},
     }
     local mapEntries={
-        {prompt=root.MapPads and root.MapPads:FindFirstChild("WorldPrompt"),map="World"},
-        {prompt=root.MapPads and root.MapPads:FindFirstChild("EuropePrompt"),map="Europe"},
-        {prompt=root.MapPads and root.MapPads:FindFirstChild("AsiaPrompt"),map="Asia"},
-        {prompt=root.MapPads and root.MapPads:FindFirstChild("MENAPrompt"),map="MENA"},
+        {prompt=root.MapPads and root.MapPads.World and root.MapPads.World:FindFirstChild("WorldPrompt"),map="World"},
+        {prompt=root.MapPads and root.MapPads.Europe and root.MapPads.Europe:FindFirstChild("EuropePrompt"),map="Europe"},
+        {prompt=root.MapPads and root.MapPads.Asia and root.MapPads.Asia:FindFirstChild("AsiaPrompt"),map="Asia"},
+        {prompt=root.MapPads and root.MapPads.MENA and root.MapPads.MENA:FindFirstChild("MENAPrompt"),map="MENA"},
     }
 
     for _,entry in ipairs(modeEntries) do
@@ -347,7 +347,7 @@ task.defer(function()
         end
     end
 
-    local enterPrompt=root:FindFirstChild("EnterPrompt")
+    local enterPrompt=root.EnterPad and root.EnterPad:FindFirstChild("EnterPrompt")
     if enterPrompt then
         enterPrompt.Triggered:Connect(function(player)
             local mode=player:GetAttribute("WorldDominionMode") or "FFA"
@@ -358,31 +358,27 @@ task.defer(function()
         end)
     end
 
-    local sign=root:FindFirstChild("House404")
+    local sign=root:FindFirstChild("House404") and root.House404:FindFirstChild("Sign")
     local signGui=sign and sign:FindFirstChild("SignGui")
     local signText=signGui and signGui:FindFirstChild("SignText")
     if signText and signText:IsA("TextLabel") then
         signText.Text="404 FOUND"
     end
 
-    for _,entry in ipairs({
-        {"Teams",root.ModePads and root.ModePads:FindFirstChild("TeamsBillboard"),root.ModePads and root.ModePads:FindFirstChild("Teams")},
-        {"FFA",root.ModePads and root.ModePads:FindFirstChild("FFABillboard"),root.ModePads and root.ModePads:FindFirstChild("FFA")},
-        {"Solo",root.ModePads and root.ModePads:FindFirstChild("SoloBillboard"),root.ModePads and root.ModePads:FindFirstChild("Solo")},
-        {"World",root.MapPads and root.MapPads:FindFirstChild("WorldBillboard"),root.MapPads and root.MapPads:FindFirstChild("World")},
-        {"Europe",root.MapPads and root.MapPads:FindFirstChild("EuropeBillboard"),root.MapPads and root.MapPads:FindFirstChild("Europe")},
-        {"Asia",root.MapPads and root.MapPads:FindFirstChild("AsiaBillboard"),root.MapPads and root.MapPads:FindFirstChild("Asia")},
-        {"MENA",root.MapPads and root.MapPads:FindFirstChild("MENABillboard"),root.MapPads and root.MapPads:FindFirstChild("MENA")},
-    }) do
-        if entry[2] and entry[3] then
-            entry[2].Adornee=entry[3]
-            entry[2].Parent=entry[3]
-        end
-    end
-    local enterBillboard=root.EnterPad and root.EnterPad:FindFirstChild("EnterBillboard")
-    if enterBillboard and root.EnterPad then
-        enterBillboard.Adornee=root.EnterPad
-        enterBillboard.Parent=root.EnterPad
+    local attachedBillboards={
+        {root.ModePads and root.ModePads.Teams,"TeamsBillboard"},
+        {root.ModePads and root.ModePads.FFA,"FFABillboard"},
+        {root.ModePads and root.ModePads.Solo,"SoloBillboard"},
+        {root.MapPads and root.MapPads.World,"WorldBillboard"},
+        {root.MapPads and root.MapPads.Europe,"EuropeBillboard"},
+        {root.MapPads and root.MapPads.Asia,"AsiaBillboard"},
+        {root.MapPads and root.MapPads.MENA,"MENABillboard"},
+        {root.EnterPad,"EnterBillboard"},
+    }
+    for _,entry in ipairs(attachedBillboards) do
+        local part=entry[1]
+        local billboard=part and part:FindFirstChild(entry[2])
+        if billboard then billboard.Adornee=part end
     end
 end)
 
