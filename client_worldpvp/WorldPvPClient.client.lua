@@ -73,8 +73,6 @@ local topStats=Instance.new("TextLabel")
 topStats.Size=UDim2.new(1,-430,1,0);topStats.Position=UDim2.fromOffset(215,0);topStats.BackgroundTransparency=1
 topStats.Text="Loading world...";topStats.Font=Enum.Font.GothamBold;topStats.TextSize=13
 topStats.TextColor3=THEME.TextMuted;topStats.TextXAlignment=Enum.TextXAlignment.Left;topStats.Parent=top
-local mapButton=button(top,"MAP",UDim2.new(1,-122,0,12),UDim2.fromOffset(48,34),function() end)
-mapButton.BackgroundColor3=THEME.Gold
 
 local viewport=Instance.new("Frame")
 viewport.Name="WorldViewport";viewport.Size=UDim2.new(1,0,1,-142);viewport.Position=UDim2.fromOffset(0,58)
@@ -113,6 +111,8 @@ local function button(parent,text,pos,size,callback)
     rounded(b);b.MouseButton1Click:Connect(callback);return b
 end
 
+local mapButton=button(top,"MAP",UDim2.new(1,-122,0,12),UDim2.fromOffset(48,34),function() end)
+mapButton.BackgroundColor3=THEME.Gold
 local function applyTransform()
     mapLayer.Size=UDim2.fromScale(zoom,zoom)
     mapLayer.Position=UDim2.new(.5,pan.X,.5,pan.Y)
