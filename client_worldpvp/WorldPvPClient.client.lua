@@ -299,14 +299,35 @@ local function showCountry(country)
         .."\n\n"..(mine and "هذه أرضك." or "اضغط زر الإجراء للتوسع إذا كانت مجاورة.")
 end
 
-mapButton.MouseButton1Click:Connect(function(x,y)
-    local px=x.AbsolutePosition.X
-    local py=y.AbsolutePosition.Y
-    local mx=mapButton.AbsolutePosition.X
-    local my=mapButton.AbsolutePosition.Y
-    local rx=math.clamp((px-mx)/math.max(1,mapButton.AbsoluteSize.X),0,1)
-    local ry=math.clamp((py-my)/math.max(1,mapButton.AbsoluteSize.Y),0,1)
-    local country=countryAt(rx*(W-1),ry*(H-1))
+-- GuiButton click events do not provide screen X/Y coordinates.
+-- InputBegan supplies an InputObject; use its Position relative to the map button.
+mapButton.InputBegan:Connect(function(inputObject)
+    local inputType = inputObject.UserInputType
+    if inputType ~= Enum.UserInputType.MouseButton1
+        and inputType ~= Enum.UserInputType.Touch then
+        return
+    end
+
+    local screenPosition = inputObject.Position
+    local mapPosition = mapButton.AbsolutePosition
+    local mapSize = mapButton.AbsoluteSize
+
+    if mapSize.X <= 0 or mapSize.Y <= 0 then
+        return
+    end
+
+    local relativeX = math.clamp(
+        (screenPosition.X - mapPosition.X) / mapSize.X,
+        0,
+        1
+    )
+    local relativeY = math.clamp(
+        (screenPosition.Y - mapPosition.Y) / mapSize.Y,
+        0,
+        1
+    )
+
+    local country = countryAt(relativeX * (W - 1), relativeY * (H - 1))
     showCountry(country)
 end)
 
