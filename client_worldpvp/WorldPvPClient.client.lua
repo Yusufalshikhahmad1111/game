@@ -4,7 +4,6 @@
 
 local Players=game:GetService("Players")
 local AssetService=game:GetService("AssetService")
-local Content=game:GetService("ContentProvider")
 local ReplicatedStorage=game:GetService("ReplicatedStorage")
 local UserInputService=game:GetService("UserInputService")
 local player=Players.LocalPlayer
