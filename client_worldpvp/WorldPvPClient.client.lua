@@ -32,6 +32,7 @@ local sendTroops=5000
 local myTroops=0
 local myMaxTroops=1
 local regenPerSecond=0
+local regenToFullSeconds=0
 local ownerByTile={}
 local landByTile={}
 local terrainByTile={}
@@ -363,9 +364,10 @@ Snapshot.OnClientEvent:Connect(function(data)
         myTroops=tonumber(me.troops) or 0
         myMaxTroops=math.max(1,tonumber(me.maxTroops) or myTroops)
         regenPerSecond=tonumber(me.regenPerSecond) or 0
+        regenToFullSeconds=tonumber(me.regenToFullSeconds) or 0
         sendTroops=math.floor(math.clamp(tonumber(sendTroops) or 5000,100,math.max(100,myTroops)))
         amountBox.Text=tostring(sendTroops)
-        armyLabel.Text="ARMY  "..math.floor(myTroops).." / "..math.floor(myMaxTroops).."   +"..math.floor(regenPerSecond).."/s"
+        armyLabel.Text="ARMY  "..math.floor(myTroops).." / "..math.floor(myMaxTroops).."   +"..math.floor(regenPerSecond).."/s   FULL "..tostring(regenToFullSeconds).."s"
         meterFill.Size=UDim2.fromScale(math.clamp(myTroops/myMaxTroops,0,1),1)
         topStats.Text="⚔ "..math.floor(me.troops).."    🪙 "..math.floor(me.gold).."    ▣ "..me.owned.." / "..data.totalLand.."    • "..tostring(me.name)
     else
