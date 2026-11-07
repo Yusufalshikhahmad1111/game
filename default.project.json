@@ -258,14 +258,14 @@
                 0.07,
                 0.05
               ]
-            }
-          },
-          "SignGui": {
-            "$className": "SurfaceGui",
-            "$properties": {
-              "Face": "Front",
-              "AlwaysOnTop": true,
-              "LightInfluence": 0
+            },
+            "SignGui": {
+              "$className": "SurfaceGui",
+              "$properties": {
+                "Face": "Front",
+                "AlwaysOnTop": true,
+                "LightInfluence": 0
+              }
             }
           },
           "SignText": {
@@ -350,6 +350,90 @@
                 0.51,
                 0.25
               ]
+            },
+            "TeamsPrompt": {
+              "$className": "ProximityPrompt",
+              "$properties": {
+                "ActionText": "اختيار التيمات",
+                "ObjectText": "TEAMS",
+                "HoldDuration": 0,
+                "MaxActivationDistance": 12,
+                "RequiresLineOfSight": false
+              }
+            },
+            "TeamsBillboard": {
+              "$className": "BillboardGui",
+              "$properties": {
+                "Adornee": null,
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  68
+                ],
+                "StudsOffset": [
+                  0,
+                  4,
+                  0
+                ],
+                "AlwaysOnTop": true,
+                "LightInfluence": 0,
+                "MaxDistance": 80
+              },
+              "Title": {
+                "$className": "TextLabel",
+                "$properties": {
+                  "Size": [
+                    0,
+                    220,
+                    0,
+                    40
+                  ],
+                  "Position": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "BackgroundTransparency": 1,
+                  "Text": "TEAMS",
+                  "TextColor3": [
+                    0.9,
+                    0.73,
+                    0.35
+                  ],
+                  "TextStrokeTransparency": 0.45,
+                  "Font": "GothamBlack",
+                  "TextScaled": true
+                }
+              },
+              "Subtitle": {
+                "$className": "TextLabel",
+                "$properties": {
+                  "Size": [
+                    0,
+                    220,
+                    0,
+                    24
+                  ],
+                  "Position": [
+                    0,
+                    0,
+                    0,
+                    40
+                  ],
+                  "BackgroundTransparency": 1,
+                  "Text": "اختر نمط الفرق",
+                  "TextColor3": [
+                    0.84,
+                    0.8,
+                    0.68
+                  ],
+                  "TextStrokeTransparency": 0.55,
+                  "Font": "GothamBold",
+                  "TextScaled": true
+                }
+              }
             }
           },
           "FFA": {
@@ -372,6 +456,90 @@
                 0.49,
                 0.2
               ]
+            },
+            "FFAPrompt": {
+              "$className": "ProximityPrompt",
+              "$properties": {
+                "ActionText": "اختيار جماعي",
+                "ObjectText": "FREE FOR ALL",
+                "HoldDuration": 0,
+                "MaxActivationDistance": 12,
+                "RequiresLineOfSight": false
+              }
+            },
+            "FFABillboard": {
+              "$className": "BillboardGui",
+              "$properties": {
+                "Adornee": null,
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  68
+                ],
+                "StudsOffset": [
+                  0,
+                  4,
+                  0
+                ],
+                "AlwaysOnTop": true,
+                "LightInfluence": 0,
+                "MaxDistance": 80
+              },
+              "Title": {
+                "$className": "TextLabel",
+                "$properties": {
+                  "Size": [
+                    0,
+                    220,
+                    0,
+                    40
+                  ],
+                  "Position": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "BackgroundTransparency": 1,
+                  "Text": "FREE FOR ALL",
+                  "TextColor3": [
+                    0.9,
+                    0.73,
+                    0.35
+                  ],
+                  "TextStrokeTransparency": 0.45,
+                  "Font": "GothamBlack",
+                  "TextScaled": true
+                }
+              },
+              "Subtitle": {
+                "$className": "TextLabel",
+                "$properties": {
+                  "Size": [
+                    0,
+                    220,
+                    0,
+                    24
+                  ],
+                  "Position": [
+                    0,
+                    0,
+                    0,
+                    40
+                  ],
+                  "BackgroundTransparency": 1,
+                  "Text": "كل لاعب لنفسه",
+                  "TextColor3": [
+                    0.84,
+                    0.8,
+                    0.68
+                  ],
+                  "TextStrokeTransparency": 0.55,
+                  "Font": "GothamBold",
+                  "TextScaled": true
+                }
+              }
             }
           },
           "Solo": {
@@ -394,257 +562,89 @@
                 0.3,
                 0.2
               ]
-            }
-          },
-          "TeamsPrompt": {
-            "$className": "ProximityPrompt",
-            "$properties": {
-              "ActionText": "اختيار التيمات",
-              "ObjectText": "TEAMS",
-              "HoldDuration": 0,
-              "MaxActivationDistance": 12,
-              "RequiresLineOfSight": false
-            }
-          },
-          "FFAPrompt": {
-            "$className": "ProximityPrompt",
-            "$properties": {
-              "ActionText": "اختيار جماعي",
-              "ObjectText": "FREE FOR ALL",
-              "HoldDuration": 0,
-              "MaxActivationDistance": 12,
-              "RequiresLineOfSight": false
-            }
-          },
-          "SoloPrompt": {
-            "$className": "ProximityPrompt",
-            "$properties": {
-              "ActionText": "اختيار فردي",
-              "ObjectText": "SOLO",
-              "HoldDuration": 0,
-              "MaxActivationDistance": 12,
-              "RequiresLineOfSight": false
-            }
-          },
-          "TeamsBillboard": {
-            "$className": "BillboardGui",
-            "$properties": {
-              "Adornee": null,
-              "Size": [
-                0,
-                220,
-                0,
-                68
-              ],
-              "StudsOffset": [
-                0,
-                4,
-                0
-              ],
-              "AlwaysOnTop": true,
-              "LightInfluence": 0,
-              "MaxDistance": 80
             },
-            "Title": {
-              "$className": "TextLabel",
+            "SoloPrompt": {
+              "$className": "ProximityPrompt",
               "$properties": {
+                "ActionText": "اختيار فردي",
+                "ObjectText": "SOLO",
+                "HoldDuration": 0,
+                "MaxActivationDistance": 12,
+                "RequiresLineOfSight": false
+              }
+            },
+            "SoloBillboard": {
+              "$className": "BillboardGui",
+              "$properties": {
+                "Adornee": null,
                 "Size": [
                   0,
                   220,
                   0,
-                  40
+                  68
                 ],
-                "Position": [
+                "StudsOffset": [
                   0,
-                  0,
-                  0,
+                  4,
                   0
                 ],
-                "BackgroundTransparency": 1,
-                "Text": "TEAMS",
-                "TextColor3": [
-                  0.9,
-                  0.73,
-                  0.35
-                ],
-                "TextStrokeTransparency": 0.45,
-                "Font": "GothamBlack",
-                "TextScaled": true
-              }
-            },
-            "Subtitle": {
-              "$className": "TextLabel",
-              "$properties": {
-                "Size": [
-                  0,
-                  220,
-                  0,
-                  24
-                ],
-                "Position": [
-                  0,
-                  0,
-                  0,
-                  40
-                ],
-                "BackgroundTransparency": 1,
-                "Text": "اختر نمط الفرق",
-                "TextColor3": [
-                  0.84,
-                  0.8,
-                  0.68
-                ],
-                "TextStrokeTransparency": 0.55,
-                "Font": "GothamBold",
-                "TextScaled": true
-              }
-            }
-          },
-          "FFABillboard": {
-            "$className": "BillboardGui",
-            "$properties": {
-              "Adornee": null,
-              "Size": [
-                0,
-                220,
-                0,
-                68
-              ],
-              "StudsOffset": [
-                0,
-                4,
-                0
-              ],
-              "AlwaysOnTop": true,
-              "LightInfluence": 0,
-              "MaxDistance": 80
-            },
-            "Title": {
-              "$className": "TextLabel",
-              "$properties": {
-                "Size": [
-                  0,
-                  220,
-                  0,
-                  40
-                ],
-                "Position": [
-                  0,
-                  0,
-                  0,
-                  0
-                ],
-                "BackgroundTransparency": 1,
-                "Text": "FREE FOR ALL",
-                "TextColor3": [
-                  0.9,
-                  0.73,
-                  0.35
-                ],
-                "TextStrokeTransparency": 0.45,
-                "Font": "GothamBlack",
-                "TextScaled": true
-              }
-            },
-            "Subtitle": {
-              "$className": "TextLabel",
-              "$properties": {
-                "Size": [
-                  0,
-                  220,
-                  0,
-                  24
-                ],
-                "Position": [
-                  0,
-                  0,
-                  0,
-                  40
-                ],
-                "BackgroundTransparency": 1,
-                "Text": "كل لاعب لنفسه",
-                "TextColor3": [
-                  0.84,
-                  0.8,
-                  0.68
-                ],
-                "TextStrokeTransparency": 0.55,
-                "Font": "GothamBold",
-                "TextScaled": true
-              }
-            }
-          },
-          "SoloBillboard": {
-            "$className": "BillboardGui",
-            "$properties": {
-              "Adornee": null,
-              "Size": [
-                0,
-                220,
-                0,
-                68
-              ],
-              "StudsOffset": [
-                0,
-                4,
-                0
-              ],
-              "AlwaysOnTop": true,
-              "LightInfluence": 0,
-              "MaxDistance": 80
-            },
-            "Title": {
-              "$className": "TextLabel",
-              "$properties": {
-                "Size": [
-                  0,
-                  220,
-                  0,
-                  40
-                ],
-                "Position": [
-                  0,
-                  0,
-                  0,
-                  0
-                ],
-                "BackgroundTransparency": 1,
-                "Text": "SOLO",
-                "TextColor3": [
-                  0.9,
-                  0.73,
-                  0.35
-                ],
-                "TextStrokeTransparency": 0.45,
-                "Font": "GothamBlack",
-                "TextScaled": true
-              }
-            },
-            "Subtitle": {
-              "$className": "TextLabel",
-              "$properties": {
-                "Size": [
-                  0,
-                  220,
-                  0,
-                  24
-                ],
-                "Position": [
-                  0,
-                  0,
-                  0,
-                  40
-                ],
-                "BackgroundTransparency": 1,
-                "Text": "فردي ضد البوتات",
-                "TextColor3": [
-                  0.84,
-                  0.8,
-                  0.68
-                ],
-                "TextStrokeTransparency": 0.55,
-                "Font": "GothamBold",
-                "TextScaled": true
+                "AlwaysOnTop": true,
+                "LightInfluence": 0,
+                "MaxDistance": 80
+              },
+              "Title": {
+                "$className": "TextLabel",
+                "$properties": {
+                  "Size": [
+                    0,
+                    220,
+                    0,
+                    40
+                  ],
+                  "Position": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "BackgroundTransparency": 1,
+                  "Text": "SOLO",
+                  "TextColor3": [
+                    0.9,
+                    0.73,
+                    0.35
+                  ],
+                  "TextStrokeTransparency": 0.45,
+                  "Font": "GothamBlack",
+                  "TextScaled": true
+                }
+              },
+              "Subtitle": {
+                "$className": "TextLabel",
+                "$properties": {
+                  "Size": [
+                    0,
+                    220,
+                    0,
+                    24
+                  ],
+                  "Position": [
+                    0,
+                    0,
+                    0,
+                    40
+                  ],
+                  "BackgroundTransparency": 1,
+                  "Text": "فردي ضد البوتات",
+                  "TextColor3": [
+                    0.84,
+                    0.8,
+                    0.68
+                  ],
+                  "TextStrokeTransparency": 0.55,
+                  "Font": "GothamBold",
+                  "TextScaled": true
+                }
               }
             }
           }
@@ -671,6 +671,90 @@
                 0.45,
                 0.25
               ]
+            },
+            "WorldPrompt": {
+              "$className": "ProximityPrompt",
+              "$properties": {
+                "ActionText": "اختيار الخريطة",
+                "ObjectText": "WORLD",
+                "HoldDuration": 0,
+                "MaxActivationDistance": 11,
+                "RequiresLineOfSight": false
+              }
+            },
+            "WorldBillboard": {
+              "$className": "BillboardGui",
+              "$properties": {
+                "Adornee": null,
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  68
+                ],
+                "StudsOffset": [
+                  0,
+                  4,
+                  0
+                ],
+                "AlwaysOnTop": true,
+                "LightInfluence": 0,
+                "MaxDistance": 80
+              },
+              "Title": {
+                "$className": "TextLabel",
+                "$properties": {
+                  "Size": [
+                    0,
+                    220,
+                    0,
+                    40
+                  ],
+                  "Position": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "BackgroundTransparency": 1,
+                  "Text": "WORLD",
+                  "TextColor3": [
+                    0.9,
+                    0.73,
+                    0.35
+                  ],
+                  "TextStrokeTransparency": 0.45,
+                  "Font": "GothamBlack",
+                  "TextScaled": true
+                }
+              },
+              "Subtitle": {
+                "$className": "TextLabel",
+                "$properties": {
+                  "Size": [
+                    0,
+                    220,
+                    0,
+                    24
+                  ],
+                  "Position": [
+                    0,
+                    0,
+                    0,
+                    40
+                  ],
+                  "BackgroundTransparency": 1,
+                  "Text": "الخريطة العالمية",
+                  "TextColor3": [
+                    0.84,
+                    0.8,
+                    0.68
+                  ],
+                  "TextStrokeTransparency": 0.55,
+                  "Font": "GothamBold",
+                  "TextScaled": true
+                }
+              }
             }
           },
           "Europe": {
@@ -693,6 +777,90 @@
                 0.56,
                 0.27
               ]
+            },
+            "EuropePrompt": {
+              "$className": "ProximityPrompt",
+              "$properties": {
+                "ActionText": "اختيار الخريطة",
+                "ObjectText": "EUROPE",
+                "HoldDuration": 0,
+                "MaxActivationDistance": 11,
+                "RequiresLineOfSight": false
+              }
+            },
+            "EuropeBillboard": {
+              "$className": "BillboardGui",
+              "$properties": {
+                "Adornee": null,
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  68
+                ],
+                "StudsOffset": [
+                  0,
+                  4,
+                  0
+                ],
+                "AlwaysOnTop": true,
+                "LightInfluence": 0,
+                "MaxDistance": 80
+              },
+              "Title": {
+                "$className": "TextLabel",
+                "$properties": {
+                  "Size": [
+                    0,
+                    220,
+                    0,
+                    40
+                  ],
+                  "Position": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "BackgroundTransparency": 1,
+                  "Text": "EUROPE",
+                  "TextColor3": [
+                    0.9,
+                    0.73,
+                    0.35
+                  ],
+                  "TextStrokeTransparency": 0.45,
+                  "Font": "GothamBlack",
+                  "TextScaled": true
+                }
+              },
+              "Subtitle": {
+                "$className": "TextLabel",
+                "$properties": {
+                  "Size": [
+                    0,
+                    220,
+                    0,
+                    24
+                  ],
+                  "Position": [
+                    0,
+                    0,
+                    0,
+                    40
+                  ],
+                  "BackgroundTransparency": 1,
+                  "Text": "أوروبا",
+                  "TextColor3": [
+                    0.84,
+                    0.8,
+                    0.68
+                  ],
+                  "TextStrokeTransparency": 0.55,
+                  "Font": "GothamBold",
+                  "TextScaled": true
+                }
+              }
             }
           },
           "Asia": {
@@ -715,6 +883,90 @@
                 0.55,
                 0.24
               ]
+            },
+            "AsiaPrompt": {
+              "$className": "ProximityPrompt",
+              "$properties": {
+                "ActionText": "اختيار الخريطة",
+                "ObjectText": "ASIA",
+                "HoldDuration": 0,
+                "MaxActivationDistance": 11,
+                "RequiresLineOfSight": false
+              }
+            },
+            "AsiaBillboard": {
+              "$className": "BillboardGui",
+              "$properties": {
+                "Adornee": null,
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  68
+                ],
+                "StudsOffset": [
+                  0,
+                  4,
+                  0
+                ],
+                "AlwaysOnTop": true,
+                "LightInfluence": 0,
+                "MaxDistance": 80
+              },
+              "Title": {
+                "$className": "TextLabel",
+                "$properties": {
+                  "Size": [
+                    0,
+                    220,
+                    0,
+                    40
+                  ],
+                  "Position": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "BackgroundTransparency": 1,
+                  "Text": "ASIA",
+                  "TextColor3": [
+                    0.9,
+                    0.73,
+                    0.35
+                  ],
+                  "TextStrokeTransparency": 0.45,
+                  "Font": "GothamBlack",
+                  "TextScaled": true
+                }
+              },
+              "Subtitle": {
+                "$className": "TextLabel",
+                "$properties": {
+                  "Size": [
+                    0,
+                    220,
+                    0,
+                    24
+                  ],
+                  "Position": [
+                    0,
+                    0,
+                    0,
+                    40
+                  ],
+                  "BackgroundTransparency": 1,
+                  "Text": "آسيا",
+                  "TextColor3": [
+                    0.84,
+                    0.8,
+                    0.68
+                  ],
+                  "TextStrokeTransparency": 0.55,
+                  "Font": "GothamBold",
+                  "TextScaled": true
+                }
+              }
             }
           },
           "MENA": {
@@ -737,341 +989,89 @@
                 0.34,
                 0.22
               ]
-            }
-          },
-          "WorldPrompt": {
-            "$className": "ProximityPrompt",
-            "$properties": {
-              "ActionText": "اختيار الخريطة",
-              "ObjectText": "WORLD",
-              "HoldDuration": 0,
-              "MaxActivationDistance": 11,
-              "RequiresLineOfSight": false
-            }
-          },
-          "EuropePrompt": {
-            "$className": "ProximityPrompt",
-            "$properties": {
-              "ActionText": "اختيار الخريطة",
-              "ObjectText": "EUROPE",
-              "HoldDuration": 0,
-              "MaxActivationDistance": 11,
-              "RequiresLineOfSight": false
-            }
-          },
-          "AsiaPrompt": {
-            "$className": "ProximityPrompt",
-            "$properties": {
-              "ActionText": "اختيار الخريطة",
-              "ObjectText": "ASIA",
-              "HoldDuration": 0,
-              "MaxActivationDistance": 11,
-              "RequiresLineOfSight": false
-            }
-          },
-          "MENAPrompt": {
-            "$className": "ProximityPrompt",
-            "$properties": {
-              "ActionText": "اختيار الخريطة",
-              "ObjectText": "MIDDLE EAST",
-              "HoldDuration": 0,
-              "MaxActivationDistance": 11,
-              "RequiresLineOfSight": false
-            }
-          },
-          "WorldBillboard": {
-            "$className": "BillboardGui",
-            "$properties": {
-              "Adornee": null,
-              "Size": [
-                0,
-                220,
-                0,
-                68
-              ],
-              "StudsOffset": [
-                0,
-                4,
-                0
-              ],
-              "AlwaysOnTop": true,
-              "LightInfluence": 0,
-              "MaxDistance": 80
             },
-            "Title": {
-              "$className": "TextLabel",
+            "MENAPrompt": {
+              "$className": "ProximityPrompt",
               "$properties": {
+                "ActionText": "اختيار الخريطة",
+                "ObjectText": "MIDDLE EAST",
+                "HoldDuration": 0,
+                "MaxActivationDistance": 11,
+                "RequiresLineOfSight": false
+              }
+            },
+            "MENABillboard": {
+              "$className": "BillboardGui",
+              "$properties": {
+                "Adornee": null,
                 "Size": [
                   0,
                   220,
                   0,
-                  40
+                  68
                 ],
-                "Position": [
+                "StudsOffset": [
                   0,
-                  0,
-                  0,
+                  4,
                   0
                 ],
-                "BackgroundTransparency": 1,
-                "Text": "WORLD",
-                "TextColor3": [
-                  0.9,
-                  0.73,
-                  0.35
-                ],
-                "TextStrokeTransparency": 0.45,
-                "Font": "GothamBlack",
-                "TextScaled": true
-              }
-            },
-            "Subtitle": {
-              "$className": "TextLabel",
-              "$properties": {
-                "Size": [
-                  0,
-                  220,
-                  0,
-                  24
-                ],
-                "Position": [
-                  0,
-                  0,
-                  0,
-                  40
-                ],
-                "BackgroundTransparency": 1,
-                "Text": "الخريطة العالمية",
-                "TextColor3": [
-                  0.84,
-                  0.8,
-                  0.68
-                ],
-                "TextStrokeTransparency": 0.55,
-                "Font": "GothamBold",
-                "TextScaled": true
-              }
-            }
-          },
-          "EuropeBillboard": {
-            "$className": "BillboardGui",
-            "$properties": {
-              "Adornee": null,
-              "Size": [
-                0,
-                220,
-                0,
-                68
-              ],
-              "StudsOffset": [
-                0,
-                4,
-                0
-              ],
-              "AlwaysOnTop": true,
-              "LightInfluence": 0,
-              "MaxDistance": 80
-            },
-            "Title": {
-              "$className": "TextLabel",
-              "$properties": {
-                "Size": [
-                  0,
-                  220,
-                  0,
-                  40
-                ],
-                "Position": [
-                  0,
-                  0,
-                  0,
-                  0
-                ],
-                "BackgroundTransparency": 1,
-                "Text": "EUROPE",
-                "TextColor3": [
-                  0.9,
-                  0.73,
-                  0.35
-                ],
-                "TextStrokeTransparency": 0.45,
-                "Font": "GothamBlack",
-                "TextScaled": true
-              }
-            },
-            "Subtitle": {
-              "$className": "TextLabel",
-              "$properties": {
-                "Size": [
-                  0,
-                  220,
-                  0,
-                  24
-                ],
-                "Position": [
-                  0,
-                  0,
-                  0,
-                  40
-                ],
-                "BackgroundTransparency": 1,
-                "Text": "أوروبا",
-                "TextColor3": [
-                  0.84,
-                  0.8,
-                  0.68
-                ],
-                "TextStrokeTransparency": 0.55,
-                "Font": "GothamBold",
-                "TextScaled": true
-              }
-            }
-          },
-          "AsiaBillboard": {
-            "$className": "BillboardGui",
-            "$properties": {
-              "Adornee": null,
-              "Size": [
-                0,
-                220,
-                0,
-                68
-              ],
-              "StudsOffset": [
-                0,
-                4,
-                0
-              ],
-              "AlwaysOnTop": true,
-              "LightInfluence": 0,
-              "MaxDistance": 80
-            },
-            "Title": {
-              "$className": "TextLabel",
-              "$properties": {
-                "Size": [
-                  0,
-                  220,
-                  0,
-                  40
-                ],
-                "Position": [
-                  0,
-                  0,
-                  0,
-                  0
-                ],
-                "BackgroundTransparency": 1,
-                "Text": "ASIA",
-                "TextColor3": [
-                  0.9,
-                  0.73,
-                  0.35
-                ],
-                "TextStrokeTransparency": 0.45,
-                "Font": "GothamBlack",
-                "TextScaled": true
-              }
-            },
-            "Subtitle": {
-              "$className": "TextLabel",
-              "$properties": {
-                "Size": [
-                  0,
-                  220,
-                  0,
-                  24
-                ],
-                "Position": [
-                  0,
-                  0,
-                  0,
-                  40
-                ],
-                "BackgroundTransparency": 1,
-                "Text": "آسيا",
-                "TextColor3": [
-                  0.84,
-                  0.8,
-                  0.68
-                ],
-                "TextStrokeTransparency": 0.55,
-                "Font": "GothamBold",
-                "TextScaled": true
-              }
-            }
-          },
-          "MENABillboard": {
-            "$className": "BillboardGui",
-            "$properties": {
-              "Adornee": null,
-              "Size": [
-                0,
-                220,
-                0,
-                68
-              ],
-              "StudsOffset": [
-                0,
-                4,
-                0
-              ],
-              "AlwaysOnTop": true,
-              "LightInfluence": 0,
-              "MaxDistance": 80
-            },
-            "Title": {
-              "$className": "TextLabel",
-              "$properties": {
-                "Size": [
-                  0,
-                  220,
-                  0,
-                  40
-                ],
-                "Position": [
-                  0,
-                  0,
-                  0,
-                  0
-                ],
-                "BackgroundTransparency": 1,
-                "Text": "MIDDLE EAST",
-                "TextColor3": [
-                  0.9,
-                  0.73,
-                  0.35
-                ],
-                "TextStrokeTransparency": 0.45,
-                "Font": "GothamBlack",
-                "TextScaled": true
-              }
-            },
-            "Subtitle": {
-              "$className": "TextLabel",
-              "$properties": {
-                "Size": [
-                  0,
-                  220,
-                  0,
-                  24
-                ],
-                "Position": [
-                  0,
-                  0,
-                  0,
-                  40
-                ],
-                "BackgroundTransparency": 1,
-                "Text": "الشرق الأوسط",
-                "TextColor3": [
-                  0.84,
-                  0.8,
-                  0.68
-                ],
-                "TextStrokeTransparency": 0.55,
-                "Font": "GothamBold",
-                "TextScaled": true
+                "AlwaysOnTop": true,
+                "LightInfluence": 0,
+                "MaxDistance": 80
+              },
+              "Title": {
+                "$className": "TextLabel",
+                "$properties": {
+                  "Size": [
+                    0,
+                    220,
+                    0,
+                    40
+                  ],
+                  "Position": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "BackgroundTransparency": 1,
+                  "Text": "MIDDLE EAST",
+                  "TextColor3": [
+                    0.9,
+                    0.73,
+                    0.35
+                  ],
+                  "TextStrokeTransparency": 0.45,
+                  "Font": "GothamBlack",
+                  "TextScaled": true
+                }
+              },
+              "Subtitle": {
+                "$className": "TextLabel",
+                "$properties": {
+                  "Size": [
+                    0,
+                    220,
+                    0,
+                    24
+                  ],
+                  "Position": [
+                    0,
+                    0,
+                    0,
+                    40
+                  ],
+                  "BackgroundTransparency": 1,
+                  "Text": "الشرق الأوسط",
+                  "TextColor3": [
+                    0.84,
+                    0.8,
+                    0.68
+                  ],
+                  "TextStrokeTransparency": 0.55,
+                  "Font": "GothamBold",
+                  "TextScaled": true
+                }
               }
             }
           }
@@ -1170,16 +1170,16 @@
                 "TextScaled": true
               }
             }
-          }
-        },
-        "EnterPrompt": {
-          "$className": "ProximityPrompt",
-          "$properties": {
-            "ActionText": "دخول المباراة",
-            "ObjectText": "ENTER WORLD",
-            "HoldDuration": 0.6,
-            "MaxActivationDistance": 12,
-            "RequiresLineOfSight": false
+          },
+          "EnterPrompt": {
+            "$className": "ProximityPrompt",
+            "$properties": {
+              "ActionText": "دخول المباراة",
+              "ObjectText": "ENTER WORLD",
+              "HoldDuration": 0.6,
+              "MaxActivationDistance": 12,
+              "RequiresLineOfSight": false
+            }
           }
         },
         "GameAnchor": {
