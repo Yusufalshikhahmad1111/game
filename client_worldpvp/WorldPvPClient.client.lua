@@ -117,6 +117,10 @@ ratioTitle.Parent=panel
 
 local ratio=.20
 local ratioButtons={}
+local snapshot=nil
+local myId=nil
+local selectedTile=nil
+local colorCache={}
 local vals={.05,.10,.20,.35,.50,1}
 for i,v in ipairs(vals) do
     local b=Instance.new("TextButton")
@@ -143,8 +147,7 @@ selected.Size=UDim2.new(1,-24,0,86)
 selected.Position=UDim2.fromOffset(12,326)
 selected.BackgroundColor3=Color3.fromRGB(18,28,41)
 selected.BorderSizePixel=0
-selected.Text="انقر على أرض حرة للـSpawn.
-بعد الـSpawn: أي نقرة = إرسال الجيش."
+selected.Text="انقر على أرض حرة للـSpawn.\\nبعد الـSpawn: أي نقرة = إرسال الجيش."
 selected.TextWrapped=true
 selected.Font=Enum.Font.Gotham
 selected.TextSize=12
@@ -200,10 +203,6 @@ notice.TextXAlignment=Enum.TextXAlignment.Left
 notice.TextYAlignment=Enum.TextYAlignment.Bottom
 notice.Parent=panel
 
-local snapshot=nil
-local myId=nil
-local selectedTile=nil
-local colorCache={}
 
 local function ownerColor(ownerId)
     if not ownerId or ownerId==0 then return nil end
