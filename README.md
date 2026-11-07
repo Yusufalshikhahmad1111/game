@@ -206,3 +206,24 @@ print("All passed:", result)
 ## 📄 ترخيص
 
 هذا المشروع لأغراض تعليمية وتطويرية. يمكن تعديله وتوزيعه freely.
+## World PvP Pivot (2026-11-07)
+
+The project runtime has now pivoted from the old turn-based Island Dominion grid to a Roblox-native real-time World PvP foundation inspired by the broad RoWorld/OpenFront gameplay loop.
+
+### Current playable direction
+
+- 55-nation roster target
+- Real-time world map
+- Nation selection
+- Territory ownership and adjacent expansion
+- Gold and troop economy
+- Cities, ports, factories, defense posts and missile silos
+- Strategic nuclear strike
+- Alliance offer/response model
+- 80% world-control victory target
+- Server-authoritative validation
+- Original Roblox-native UI and simulation code
+
+The old Island Dominion implementation remains in the repository history but is no longer mapped by `default.project.json`.
+
+**Important:** this is an original Roblox implementation inspired by the genre/gameplay structure. It does not contain RoWorld's private Roblox source or proprietary assets. See `docs/ROWORLD_RESEARCH_AND_PIVOT.md` for research, licensing notes and the W0–W8 migration plan.
