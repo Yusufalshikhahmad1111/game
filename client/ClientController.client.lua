@@ -295,7 +295,7 @@ listStroke.Thickness = 1
 listStroke.Parent = playersList
 
 local listLayout = Instance.new("UIListLayout")
-listLayout.Padding = UDim2.new(0, 0, 0, 8)
+listLayout.Padding = UDim.new(0, 8)
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Parent = playersList
 
