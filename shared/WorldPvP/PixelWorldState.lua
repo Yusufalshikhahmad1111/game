@@ -540,7 +540,7 @@ local function packPlayers(self)
         players[id]={
             id=id,name=n.displayName or n.name,color=n.color,
             troops=math.floor(n.troops),maxTroops=math.floor(maxTroops),
-            regenPerSecond=math.floor(regenPerSecond),gold=math.floor(n.gold),
+            regenPerSecond=math.floor(regenPerSecond),regenToFullSeconds=regenPerSecond>0 and math.ceil(math.max(0,maxTroops-n.troops)/regenPerSecond) or 0,gold=math.floor(n.gold),
             owned=n.owned,share=self.map.totalLand>0 and n.owned/self.map.totalLand or 0,
             alive=n.alive,isAI=n.isAI,kind=n.kind,userId=n.userId,
             kills=n.kills,attacks=n.attacks,nukes=n.nukes,
