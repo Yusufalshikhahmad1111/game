@@ -45,7 +45,7 @@ function State:_newNation(id,name,isAI,kind,color)
         owned=0,alive=true,coast=false,userId=nil,displayName=nil,
         kills=0,attacks=0,nukes=0,tileIds={},tileIndex={},
         centerXSum=0,centerYSum=0,buildings=kinds,buildingLevels=levels,
-        protectedUntil=0,
+        protectedUntil=0,_lastNuke={},
     }
     n.ownerIndex=#self.ownerIds+1
     self.ownerIds[n.ownerIndex]=id
@@ -563,6 +563,7 @@ function State:metadataSnapshot()
         matchId=self.matchId,mapKey=self.mapKey,mapTitle=self.map.mapTitle or self.mapKey,
         width=self.map.width,height=self.map.height,
         totalLand=self.map.totalLand,time=self.time,winner=self.winner,
+        victoryShare=self.map.victoryShare or 0.80,
         ownerIds=self.ownerIds,players=packPlayers(self),attacks=packAttacks(self),
         buildingMarkers=markers,
     }
