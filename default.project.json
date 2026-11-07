@@ -1,66 +1,21 @@
 {
-  "name": "IslandDominion",
+  "name": "WorldDominion",
   "tree": {
     "$className": "DataModel",
+
     "ReplicatedStorage": {
       "$className": "ReplicatedStorage",
       "Shared": {
         "$className": "Folder",
         "$path": "shared"
-      },
-      "GameRemotes": {
-        "$className": "Folder",
-        "SelectColor": {
-          "$className": "RemoteEvent"
-        },
-        "SetMapSize": {
-          "$className": "RemoteEvent"
-        },
-        "UpdateMap": {
-          "$className": "RemoteEvent"
-        },
-        "GameOver": {
-          "$className": "RemoteEvent"
-        },
-        "ResourceUpdate": {
-          "$className": "RemoteEvent"
-        },
-        "VisualEffect": {
-          "$className": "RemoteEvent"
-        },
-        "UsePower": {
-          "$className": "RemoteEvent"
-        },
-        "EventNotify": {
-          "$className": "RemoteEvent"
-        },
-        "JoinLobby": {
-          "$className": "RemoteEvent"
-        },
-        "LeaveLobby": {
-          "$className": "RemoteEvent"
-        },
-        "SetReady": {
-          "$className": "RemoteEvent"
-        },
-        "StartMatch": {
-          "$className": "RemoteEvent"
-        },
-        "LobbyState": {
-          "$className": "RemoteEvent"
-        },
-        "MatchState": {
-          "$className": "RemoteEvent"
-        },
-        "TurnTimeout": {
-          "$className": "RemoteEvent"
-        }
       }
     },
+
     "ServerScriptService": {
       "$className": "ServerScriptService",
-      "$path": "server"
+      "$path": "server_worldpvp"
     },
+
     "ServerStorage": {
       "$className": "ServerStorage",
       "Tests": {
@@ -68,11 +23,12 @@
         "$path": "tests"
       }
     },
+
     "StarterPlayer": {
       "$className": "StarterPlayer",
       "StarterPlayerScripts": {
         "$className": "StarterPlayerScripts",
-        "$path": "client"
+        "$path": "client_worldpvp"
       }
     }
   }
