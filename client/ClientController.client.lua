@@ -334,7 +334,7 @@ sizeRow.Parent = lobbyCard
 
 local sizeLayout = Instance.new("UIListLayout")
 sizeLayout.FillDirection = Enum.FillDirection.Horizontal
-sizeLayout.Padding = UDim2.new(0, 8, 0, 0)
+sizeLayout.Padding = UDim.new(0, 8)
 sizeLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 sizeLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 sizeLayout.Parent = sizeRow
@@ -604,7 +604,7 @@ insContent.AutomaticCanvasSize = Enum.AutomaticSize.Y
 insContent.Parent = inspector
 
 local insLayout = Instance.new("UIListLayout")
-insLayout.Padding = UDim2.new(0, 0, 0, 10)
+insLayout.Padding = UDim.new(0, 10)
 insLayout.SortOrder = Enum.SortOrder.LayoutOrder
 insLayout.Parent = insContent
 
