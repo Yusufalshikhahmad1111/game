@@ -12,6 +12,7 @@ local Spawn=remotes:WaitForChild("Spawn")
 local Attack=remotes:WaitForChild("Attack")
 local Build=remotes:WaitForChild("Build")
 local Nuke=remotes:WaitForChild("Nuke")
+local SelectMap=remotes:WaitForChild("SelectMap")
 local Request=remotes:WaitForChild("RequestSnapshot")
 local Snapshot=remotes:WaitForChild("Snapshot")
 local Chunk=remotes:WaitForChild("MapChunk")
@@ -27,6 +28,7 @@ local panStart=Vector2.zero
 local snapshot=nil
 local myId=nil
 local selectedTile=nil
+local selectedWeapon="Atom"
 local ratio=.20
 local THEME = {
     Background = Color3.fromRGB(18, 21, 16),
@@ -71,6 +73,8 @@ local topStats=Instance.new("TextLabel")
 topStats.Size=UDim2.new(1,-430,1,0);topStats.Position=UDim2.fromOffset(215,0);topStats.BackgroundTransparency=1
 topStats.Text="Loading world...";topStats.Font=Enum.Font.GothamBold;topStats.TextSize=13
 topStats.TextColor3=THEME.TextMuted;topStats.TextXAlignment=Enum.TextXAlignment.Left;topStats.Parent=top
+local mapButton=button(top,"MAP",UDim2.new(1,-122,0,12),UDim2.fromOffset(48,34),function() end)
+mapButton.BackgroundColor3=THEME.Gold
 
 local viewport=Instance.new("Frame")
 viewport.Name="WorldViewport";viewport.Size=UDim2.new(1,0,1,-142);viewport.Position=UDim2.fromOffset(0,58)
@@ -189,10 +193,60 @@ buildButton("CITY",-370,"City").Size=UDim2.fromOffset(62,34)
 buildButton("FACTORY",-302,"Factory").Size=UDim2.fromOffset(72,34)
 buildButton("PORT",-224,"Port").Size=UDim2.fromOffset(58,34)
 buildButton("DEFENSE",-160,"DefensePost").Size=UDim2.fromOffset(70,34)
-local nukeButton=button(dock,"NUKE",UDim2.new(1,-84,0,22),UDim2.fromOffset(72,34),function()
-    if selectedTile then Nuke:FireServer(selectedTile) end
+buildButton("SAM",-438,"SAM").Size=UDim2.fromOffset(52,34)
+buildButton("SILO",-496,"MissileSilo").Size=UDim2.fromOffset(56,34)
+buildButton("SHIP",-558,"Warship").Size=UDim2.fromOffset(58,34)
+local nukeButton=button(dock,"ATOM",UDim2.new(1,-84,0,22),UDim2.fromOffset(72,34),function()
+    if selectedTile and myId then Nuke:FireServer(selectedTile,selectedWeapon) end
 end)
 nukeButton.BackgroundColor3=THEME.Brown
+local hydroButton=button(dock,"HYDRO",UDim2.new(1,-162,0,22),UDim2.fromOffset(72,34),function()
+    selectedWeapon="Hydrogen";nukeButton.Text="HYDRO"
+end)
+hydroButton.BackgroundColor3=THEME.Brown
+local mirvButton=button(dock,"MIRV",UDim2.new(1,-240,0,22),UDim2.fromOffset(72,34),function()
+    selectedWeapon="MIRV";nukeButton.Text="MIRV"
+end)
+mirvButton.BackgroundColor3=THEME.Brown
+
+local mapPanel=Instance.new("Frame")
+mapPanel.Size=UDim2.fromOffset(260,210)
+mapPanel.Position=UDim2.new(1,-278,0,72)
+mapPanel.BackgroundColor3=THEME.Panel
+mapPanel.BorderSizePixel=0
+mapPanel.ZIndex=60
+mapPanel.Visible=false
+mapPanel.Parent=root
+rounded(mapPanel)
+
+local mapPanelTitle=Instance.new("TextLabel")
+mapPanelTitle.Size=UDim2.new(1,-20,0,34)
+mapPanelTitle.Position=UDim2.fromOffset(10,4)
+mapPanelTitle.BackgroundTransparency=1
+mapPanelTitle.Text="SELECT MAP"
+mapPanelTitle.Font=Enum.Font.GothamBlack
+mapPanelTitle.TextSize=13
+mapPanelTitle.TextColor3=THEME.Text
+mapPanelTitle.TextXAlignment=Enum.TextXAlignment.Left
+mapPanelTitle.ZIndex=61
+mapPanelTitle.Parent=mapPanel
+
+local mapChoices={
+    {"World","WORLD"},
+    {"Europe","EUROPE"},
+    {"Asia","ASIA"},
+    {"MENA","MIDDLE EAST"},
+}
+for index,choice in ipairs(mapChoices) do
+    local b=button(mapPanel,choice[2],UDim2.fromOffset(10,38+(index-1)*39),UDim2.new(1,-20,0,32),function()
+        SelectMap:FireServer(choice[1])
+        mapPanel.Visible=false
+    end)
+    b.ZIndex=61
+end
+mapButton.Activated:Connect(function()
+    mapPanel.Visible=not mapPanel.Visible
+end)
 
 local notice=Instance.new("TextLabel")
 notice.Size=UDim2.new(0,380,0,38);notice.Position=UDim2.new(.5,-190,0,66);notice.BackgroundColor3=THEME.Panel
@@ -389,7 +443,7 @@ Snapshot.OnClientEvent:Connect(function(data)
         meterFill.Size=UDim2.fromScale(math.clamp(myTroops/myMaxTroops,0,1),1)
         topStats.Text="⚔ "..math.floor(me.troops).."    🪙 "..math.floor(me.gold).."    ▣ "..me.owned.." / "..data.totalLand.."    • "..tostring(me.name)
     else
-        topStats.Text="DEPLOY • "..tostring(data.width).." × "..tostring(data.height).." PIXELS"
+        topStats.Text="DEPLOY • "..tostring(data.mapTitle or data.mapKey or "WORLD").." • "..tostring(data.width).." × "..tostring(data.height).." PIXELS"
     end
     for _,change in ipairs(data.tileChanges or {}) do
         ownerByTile[change.id]=change.ownerIndex
@@ -410,9 +464,10 @@ Snapshot.OnClientEvent:Connect(function(data)
     end
     boardList.CanvasSize=UDim2.fromOffset(0,math.max(0,#data.players*25))
     renderBattleOverlay()
+    mapButton.Text=tostring(data.mapTitle or data.mapKey or "MAP")
     if data.winner then
         local win=data.players[data.winner]
-        notice.Text="🏆 "..tostring(win and win.name or data.winner).." controls 80% of the world."
+        notice.Text="🏆 "..tostring(win and win.name or data.winner).." controls "..tostring(math.floor((data.victoryShare or .8)*100)).."% of the map."
         notice.TextColor3=THEME.Gold
     end
 end)
