@@ -1,12 +1,14 @@
 -- server_worldpvp/WorldPvPGame.server.lua
--- Server-authoritative World PvP runtime. Original Roblox-native implementation.
+-- Country-level World PvP runtime: no avatar gameplay, only map strategy.
 
 local Players=game:GetService("Players")
 local ReplicatedStorage=game:GetService("ReplicatedStorage")
 local Shared=ReplicatedStorage:WaitForChild("Shared")
-local WorldSeed=require(Shared.WorldPvP.WorldSeed)
 local WorldState=require(Shared.WorldPvP.WorldState)
+local CountryMapData=require(Shared.WorldPvP.CountryMapData)
 local Rules=require(Shared.WorldPvP.Rules)
+
+Players.CharacterAutoLoads=false
 
 local folder=ReplicatedStorage:FindFirstChild("WorldPvPRemotes") or Instance.new("Folder")
 folder.Name="WorldPvPRemotes"; folder.Parent=ReplicatedStorage
@@ -16,88 +18,53 @@ local function remote(name)
     r.Name=name; r.Parent=folder; return r
 end
 
-local SelectNation=remote("SelectNation")
-local Attack=remote("Attack")
-local NavalAttack=remote("NavalAttack")
-local Build=remote("Build")
-local Nuke=remote("Nuke")
-local AllianceOffer=remote("AllianceOffer")
-local AllianceRespond=remote("AllianceRespond")
+local SelectCountry=remote("SelectCountry")
+local AttackCountry=remote("AttackCountry")
 local RequestSnapshot=remote("RequestSnapshot")
 local Snapshot=remote("Snapshot")
 local Notice=remote("Notice")
 
-local map,entities=WorldSeed.create()
-local state=WorldState.new(map)
-for _,entity in ipairs(entities) do
-    state:addNation(entity.id,entity.name,{entity.cellId},entity.color,entity.category)
+local state=WorldState.new(nil)
+local palette={
+    {r=.84,g=.22,b=.20},{r=.20,g=.48,b=.86},{r=.18,g=.66,b=.38},{r=.92,g=.59,b=.17},
+    {r=.61,g=.31,b=.82},{r=.12,g=.67,b=.73},{r=.88,g=.33,b=.55},{r=.48,g=.57,b=.24},
+    {r=.20,g=.70,b=.58},{r=.80,g=.43,b=.18},{r=.36,g=.50,b=.73},{r=.72,g=.35,b=.31},
+}
+for i,country in ipairs(CountryMapData.Countries) do
+    state:addCountryNation(country.id,palette[((i-1)%#palette)+1],"Nation")
 end
 
-local function snapshot() return state:getSnapshot() end
-local function send(player) Snapshot:FireClient(player,snapshot()) end
+local function send(player)
+    Snapshot:FireClient(player,state:getCountrySnapshot())
+end
 local function broadcast()
-    local data=snapshot()
-    for _,p in ipairs(Players:GetPlayers()) do Snapshot:FireClient(p,data) end
+    local data=state:getCountrySnapshot()
+    for _,player in ipairs(Players:GetPlayers()) do Snapshot:FireClient(player,data) end
 end
 local function notify(player,message,kind)
     Notice:FireClient(player,{message=message,kind=kind or "info"})
 end
 
-SelectNation.OnServerEvent:Connect(function(player,nationId)
-    if #Players:GetPlayers()>Rules.MaxPlayers then notify(player,"السيرفر ممتلئ.","error"); return end
-    local ok,result=state:assignPlayer(player.UserId,tostring(nationId))
-    if not ok then notify(player,result,"error"); return end
-    notify(player,"تم اختيار "..result.name.." — ابدأ التوسع!","success")
+SelectCountry.OnServerEvent:Connect(function(player,countryId)
+    local ok,nation=state:assignPlayerCountry(player.UserId,tostring(countryId))
+    if not ok then notify(player,nation,"error"); return end
+    state:setPlayerDisplayName(player.UserId,player.DisplayName or player.Name)
+    notify(player,"تم تثبيت موقعك. الآن انقر على دولة مجاورة لتتوسع.","success")
     broadcast()
 end)
 
-Attack.OnServerEvent:Connect(function(player,cellId,troops)
-    local ok,result=state:attack(player.UserId,tostring(cellId),troops)
-    if not ok then notify(player,result,"error"); return end
-    notify(player,"الهجوم في الطريق #"..result,"success")
+AttackCountry.OnServerEvent:Connect(function(player,countryId,troops)
+    local ok,id=state:attackCountry(player.UserId,tostring(countryId),troops)
+    if not ok then notify(player,id,"error"); return end
+    notify(player,"الهجوم انطلق نحو الجبهة #"..tostring(id),"success")
 end)
 
-NavalAttack.OnServerEvent:Connect(function(player,cellId,troops)
-    local nation=state:getNationForPlayer(player.UserId)
-    if not nation then notify(player,"اختر دولة أولاً.","error"); return end
-    local ok,result=state:queueAttack(nation.id,tostring(cellId),troops,true)
-    if not ok then notify(player,result,"error"); return end
-    notify(player,"تم إطلاق الإنزال البحري #"..result,"success")
-end)
-
-Build.OnServerEvent:Connect(function(player,cellId,kind)
-    local ok,result=state:build(player.UserId,tostring(cellId),tostring(kind))
-    if not ok then notify(player,result,"error"); return end
-    notify(player,"تم بناء "..tostring(result.kind),"success")
-    broadcast()
-end)
-
-Nuke.OnServerEvent:Connect(function(player,cellId)
-    local ok,result=state:launchNuke(player.UserId,tostring(cellId))
-    if not ok then notify(player,result,"error"); return end
-    notify(player,"تم إطلاق الضربة الاستراتيجية.","warning")
-    broadcast()
-end)
-
-AllianceOffer.OnServerEvent:Connect(function(player,targetUserId)
-    local ok,err=state:proposeAlliance(player.UserId,tonumber(targetUserId))
-    if not ok then notify(player,err,"error"); return end
-    notify(player,"تم إرسال عرض التحالف.","success")
-end)
-
-AllianceRespond.OnServerEvent:Connect(function(player,accept)
-    local ok,err=state:respondAlliance(player.UserId,accept==true)
-    if not ok then notify(player,err,"error"); return end
-    notify(player,accept and "تم قبول التحالف." or "تم رفض التحالف.","success")
-    broadcast()
-end)
-
-RequestSnapshot.OnServerEvent:Connect(function(player) send(player) end)
+RequestSnapshot.OnServerEvent:Connect(send)
 
 Players.PlayerAdded:Connect(function(player)
     task.defer(function()
         send(player)
-        notify(player,"اختر دولة ملونة غير محتلة. القبائل مناطق AI.","info")
+        notify(player,"انقر أي أرض غير محتلة لاختيار نقطة البداية.","info")
     end)
 end)
 
@@ -118,39 +85,39 @@ task.spawn(function()
     while true do
         task.wait(Rules.TickSeconds)
         local now=os.clock()
-        local dt=math.min(2,now-last); last=now
-
+        local dt=math.min(2,now-last)
+        last=now
         if not state.matchOver then
             local events=state:tick(dt)
-
             for id,nation in pairs(state.nations) do
-                if nation.isAI and #nation.cellIds>0 and now>=(aiNext[id] or 0) then
+                if nation.isAI and state:getNationLand(id)>0 and now>=(aiNext[id] or 0) then
                     aiNext[id]=now+Rules.AI.ThinkMinSeconds+math.random()*(Rules.AI.ThinkMaxSeconds-Rules.AI.ThinkMinSeconds)
-
-                    local targets=state:findAttackTargets(id)
-                    if #targets>0 and nation.troops>=Rules.AI.MinimumAttackTroops then
-                        local target=targets[math.random(1,#targets)]
-                        local commit=math.floor(nation.troops*Rules.AI.AttackReserveRatio)
-                        if commit>=Rules.AI.MinimumAttackTroops then
-                            state:queueAttack(id,target,commit,false)
-                        end
-                    elseif nation.gold>=Rules.AI.CityReserveGold then
-                        for _,cellId in ipairs(nation.cellIds) do
-                            local cell=map.cellsById[cellId]
-                            if cell and not cell.building then
-                                local kind=cell.isCoastal and "Port" or "City"
-                                local def=Rules.Buildings[kind]
-                                if nation.gold>=def.Cost then
-                                    nation.gold-=def.Cost
-                                    cell.building={kind=kind,level=1,health=100}
-                                    break
+                    local targets={}
+                    for countryId,ownerId in pairs(state.countryOwners) do
+                        if ownerId~=id then
+                            local country=CountryMapData.get(countryId)
+                            if country then
+                                for _,neighborId in ipairs(country.neighbors) do
+                                    if state.countryOwners[neighborId]==id then
+                                        targets[#targets+1]=countryId
+                                        break
+                                    end
                                 end
                             end
                         end
                     end
+                    if #targets>0 and nation.troops>=Rules.AI.MinimumAttackTroops then
+                        local target=targets[math.random(1,#targets)]
+                        state.attacks[#state.attacks+1]={
+                            id=state.nextAttackId+1,attackerNationId=id,defenderNationId=state.countryOwners[target],
+                            targetCountryId=target,troopCount=math.floor(nation.troops*Rules.AI.AttackReserveRatio),
+                            naval=false,resolvesAt=state.clock+Rules.Attack.TravelSeconds
+                        }
+                        state.nextAttackId+=1
+                        nation.troops-=math.floor(nation.troops*Rules.AI.AttackReserveRatio)
+                    end
                 end
             end
-
             if #events>0 or now-lastBroadcast>=Rules.SnapshotSeconds then
                 broadcast()
                 lastBroadcast=now
@@ -159,4 +126,4 @@ task.spawn(function()
     end
 end)
 
-print("[WorldPvP] Runtime online | 55-player target | "..tostring(#entities).." world entities")
+print("[WorldPvP] Country map online | "..tostring(#CountryMapData.Countries).." real countries | avatar spawning disabled")
