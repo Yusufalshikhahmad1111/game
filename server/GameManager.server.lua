@@ -124,6 +124,13 @@ end
 -- TURN TIMEOUT
 -- ============================================================
 
+-- Forward declarations for mutually dependent local functions.
+-- Lua resolves local variables lexically, so functions referenced before
+-- their definition must be declared up front to avoid calling a global nil.
+local advanceTurnAndProcess
+local tryRandomEvent
+local handleAITurn
+
 local function startTurnTimeout()
     if not gameState then return end
     local currentTeam = gameState.turnManager:getCurrentTeam()
@@ -176,7 +183,7 @@ local function createGameState(gridSize)
     gameState:setMatchRecorded(false)
 end
 
-local function advanceTurnAndProcess()
+advanceTurnAndProcess = function()
     if not gameState then return end
     
     stopTurnTimeout()
@@ -215,7 +222,7 @@ local function advanceTurnAndProcess()
     broadcastMatchState()
 end
 
-local function tryRandomEvent()
+tryRandomEvent = function()
     local roll = math.random()
     if roll < (eventChancePerTurn * 0.15) then
         local events = EventSystem:getAllEvents()
@@ -269,7 +276,7 @@ local function handlePlayerTurn(player, colorName)
     advanceTurnAndProcess()
 end
 
-local function handleAITurn(team)
+handleAITurn = function(team)
     if not gameState then return end
     if not ValidationSystem.validateGameActive(gameState:isActive()) then return end
     if not ValidationSystem.validateTurn(gameState.turnManager:getCurrentTeam(), team) then return end
