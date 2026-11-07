@@ -68,7 +68,7 @@ end
 
 function Board:chooseTerrainType(x, y, gridSize, capitalPlaced)
     -- Simple strategy: 
-    - Avoid placing too many rares in corners
+    -- Avoid placing too many rares in corners
     - Create some clusters
     - Place capital somewhere central-ish
     
