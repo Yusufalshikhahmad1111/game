@@ -122,11 +122,6 @@ local function broadcast()
 end
 
 local function startMatch(player,mapId)
-    if worldActive then
-        notice(player,"في مباراة جارية بالفعل على خريطة "..tostring(matchMap)..".","error")
-        return
-    end
-
     local definition=MapRegistry.get(mapId)
     if not definition then
         notice(player,"الخريطة غير موجودة.","error")
@@ -136,6 +131,20 @@ local function startMatch(player,mapId)
     local mode=player:GetAttribute("WorldDominionMode")
     if mode~="Teams" and mode~="FFA" and mode~="Solo" then
         notice(player,"اختر Teams أو FFA أو Solo أولاً.","error")
+        return
+    end
+
+    -- Once a match exists, later players may join it only when their chosen
+    -- mode and map match the active match.
+    if worldActive then
+        if mode~=matchMode or definition.id~=matchMap then
+            notice(player,"اختيارك لا يطابق المباراة الحالية: "..tostring(matchMap).." / "..tostring(matchMode)..".","error")
+            return
+        end
+        player:SetAttribute("WorldDominionActive",true)
+        EnterWorld:FireClient(player,{mode=matchMode,mapKey=matchMap,mapTitle=definition.title})
+        sendWorld(player)
+        notice(player,"انضممت إلى المباراة الحالية.","success")
         return
     end
 
