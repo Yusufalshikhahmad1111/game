@@ -364,7 +364,6 @@
             "TeamsBillboard": {
               "$className": "BillboardGui",
               "$properties": {
-                "Adornee": null,
                 "Size": [
                   0,
                   220,
@@ -470,7 +469,6 @@
             "FFABillboard": {
               "$className": "BillboardGui",
               "$properties": {
-                "Adornee": null,
                 "Size": [
                   0,
                   220,
@@ -576,7 +574,6 @@
             "SoloBillboard": {
               "$className": "BillboardGui",
               "$properties": {
-                "Adornee": null,
                 "Size": [
                   0,
                   220,
@@ -685,7 +682,6 @@
             "WorldBillboard": {
               "$className": "BillboardGui",
               "$properties": {
-                "Adornee": null,
                 "Size": [
                   0,
                   220,
@@ -791,7 +787,6 @@
             "EuropeBillboard": {
               "$className": "BillboardGui",
               "$properties": {
-                "Adornee": null,
                 "Size": [
                   0,
                   220,
@@ -897,7 +892,6 @@
             "AsiaBillboard": {
               "$className": "BillboardGui",
               "$properties": {
-                "Adornee": null,
                 "Size": [
                   0,
                   220,
@@ -1003,7 +997,6 @@
             "MENABillboard": {
               "$className": "BillboardGui",
               "$properties": {
-                "Adornee": null,
                 "Size": [
                   0,
                   220,
@@ -1100,7 +1093,6 @@
           "EnterBillboard": {
             "$className": "BillboardGui",
             "$properties": {
-              "Adornee": null,
               "Size": [
                 0,
                 220,
