@@ -182,15 +182,18 @@ function State:_areAllied(a,b)
     return self.alliances[allianceKey(a,b)]==true
 end
 
-function State:attack(userId,targetId,ratio)
+function State:attack(userId,targetId,amountOrRatio)
     local n=self.byUser[userId] or self.players[userId]
     if not n or not n.alive then return false,"Your nation has been eliminated" end
-    if self.time<n.protectedUntil then return false,"Protected for "..math.ceil(n.protectedUntil-self.time).."s" end
+
+    -- Spawn protection protects the new nation from incoming attacks only.
+    -- It must never prevent the owner from expanding during the protection window.
     targetId=math.floor(tonumber(targetId) or 0)
     local target=self.map:get(targetId)
     if not target or not target.isLand then return false,"Target must be land" end
     if target.ownerId==n.id then return false,"Already yours" end
     if self:_areAllied(n.id,target.ownerId) then return false,"Cannot attack an ally" end
+
     local defender=self.players[target.ownerId]
     if defender and self.time<defender.protectedUntil then return false,"Target is protected" end
 
@@ -198,7 +201,7 @@ function State:attack(userId,targetId,ratio)
     local source=target
     local travel=0
     if naval then
-        if not target.isCoastal then return false,"Sea attacks must land on a coast" end
+        if not target.isCoastal then return false,"Select land touching your frontier, or a coastal target for a sea attack" end
         local coast,distanceSquared=self:_nearestOwnedCoast(n,target)
         if not coast then return false,"Capture coastal land before launching a sea attack" end
         source=coast
@@ -206,17 +209,28 @@ function State:attack(userId,targetId,ratio)
         travel=math.max(Rules.Naval.MinimumTravelSeconds,math.sqrt(distanceSquared)*Rules.Naval.SecondsPerPixel/speed)
     end
 
-    ratio=clamp(tonumber(ratio) or Rules.DefaultAttackRatio,Rules.MinimumAttackRatio,Rules.MaximumAttackRatio)
-    local troops=math.floor(n.troops*ratio)
-    if troops<Rules.Attack.MinimumCommit then return false,"Not enough troops to launch" end
-    n.troops-=troops;n.attacks+=1;self.nextAttack+=1
+    -- Human client sends an exact troop count. AI callers may still pass a
+    -- 0..1 ratio, preserving their existing decision logic.
+    local requested=tonumber(amountOrRatio)
+    local troops
+    if requested and requested>1 then
+        troops=math.floor(clamp(requested,0,n.troops))
+    else
+        local ratio=clamp(requested or Rules.DefaultAttackRatio,Rules.MinimumAttackRatio,Rules.MaximumAttackRatio)
+        troops=math.floor(n.troops*ratio)
+    end
+    if troops<Rules.Attack.MinimumCommit then return false,"You need at least "..tostring(Rules.Attack.MinimumCommit).." troops to attack" end
+
+    n.troops-=troops
+    n.attacks+=1
+    self.nextAttack+=1
     self.attacks[self.nextAttack]={
         id=self.nextAttack,owner=n.id,target=targetId,targetOwnerId=target.ownerId,
         source=source.id,troops=troops,initialTroops=troops,naval=naval,
         startTime=self.time,arrivalAt=self.time+travel,lastStep=self.time,
         frontier={targetId},seen={[targetId]=true},
     }
-    return true,self.nextAttack
+    return true,self.nextAttack,troops
 end
 
 function State:_captureTile(n,t)
@@ -259,7 +273,21 @@ function State:_stepAttack(a)
 
     for _=1,maxCaptures do
         if #a.frontier==0 or a.troops<=0 then break end
-        local pick=math.random(1,#a.frontier)
+        -- Prefer frontier pixels with more same-owner neighbours. This expands
+        -- a broad, connected patch rather than a thin random snake.
+        local pick,bestScore=1,-math.huge
+        for index,frontierId in ipairs(a.frontier) do
+            local candidate=self.map:get(frontierId)
+            local support=0
+            if candidate then
+                for _,neighborId in ipairs(candidate.neighbors or {}) do
+                    local neighbor=self.map:get(neighborId)
+                    if neighbor and neighbor.ownerId==a.targetOwnerId then support+=1 end
+                end
+            end
+            local score=support*3+math.random()
+            if score>bestScore then pick,bestScore=index,score end
+        end
         local id=table.remove(a.frontier,pick)
         local t=self.map:get(id)
         if t and t.isLand and t.ownerId==a.targetOwnerId and not self:_areAllied(n.id,t.ownerId) then
@@ -465,7 +493,11 @@ function State:tick(dt)
             local lv=n.buildingLevels
             local city=lv.City or 0
             local cap=Rules.HumanStartingTroops+n.owned*Rules.TroopCapPerTile+city*Rules.Buildings.City.TroopCapacity
-            local growth=(Rules.TroopRegenerationBase+math.sqrt(math.max(1,n.troops))*.5)*dt
+            -- OpenFront-style nonlinear regeneration: faster at low army,
+            -- tapering smoothly as the army approaches its capacity.
+            local fill=cap>0 and clamp(1-(n.troops/cap),0,1) or 0
+            local perTick=Rules.TroopRegenerationBase+(math.max(0,n.troops)^0.73)/4
+            local growth=perTick*fill*(dt/Rules.TickSeconds)
             n.troops=math.min(cap,n.troops+growth)
             local income=Rules.GoldPerSecond
                 +(lv.City or 0)*Rules.Buildings.City.GoldPerSecond
@@ -500,9 +532,15 @@ local function packPlayers(self)
         end
         local lx,ly=0,0
         if n.owned>0 then lx=n.centerXSum/n.owned;ly=n.centerYSum/n.owned end
+        local maxTroops=Rules.HumanStartingTroops+n.owned*Rules.TroopCapPerTile
+            +(n.buildingLevels.City or 0)*Rules.Buildings.City.TroopCapacity
+        local fill=maxTroops>0 and clamp(1-(n.troops/maxTroops),0,1) or 0
+        local regenPerSecond=(Rules.TroopRegenerationBase+(math.max(0,n.troops)^0.73)/4)
+            *fill/Rules.TickSeconds
         players[id]={
             id=id,name=n.displayName or n.name,color=n.color,
-            troops=math.floor(n.troops),gold=math.floor(n.gold),
+            troops=math.floor(n.troops),maxTroops=math.floor(maxTroops),
+            regenPerSecond=math.floor(regenPerSecond),gold=math.floor(n.gold),
             owned=n.owned,share=self.map.totalLand>0 and n.owned/self.map.totalLand or 0,
             alive=n.alive,isAI=n.isAI,kind=n.kind,userId=n.userId,
             kills=n.kills,attacks=n.attacks,nukes=n.nukes,
