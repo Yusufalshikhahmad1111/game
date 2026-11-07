@@ -34,7 +34,8 @@ local function countBuildings(self, nation, kind)
 end
 
 function WorldState.new(map)
-    assert(map and map.cellsById and map.totalLand > 0, "valid map required")
+    map = map or {cellsById={}, cells={}, totalLand=1}
+    assert(map.cellsById and map.totalLand > 0, "valid map required")
     local self = setmetatable({}, WorldState)
     self.map = map
     self.nations = {}
@@ -117,7 +118,6 @@ function WorldState:assignPlayerCountry(userId, countryId)
     if nation.category~="Nation" then return false, "This territory is AI controlled" end
     nation.ownerUserId=userId
     nation.isAI=false
-    nation.displayName = nil
     self.playerNation[userId]=countryId
     return true,nation
 end
@@ -171,6 +171,12 @@ function WorldState:_resolveCountryAttack(a)
     attacker.score+=1
     attacker.gold+=25000
     return {type="CountryCaptured",attackId=a.id,countryId=targetId,nationId=attacker.id}
+end
+
+function WorldState:setPlayerDisplayName(userId, displayName)
+    local nation=self:getNationForPlayer(userId)
+    if nation then nation.displayName=tostring(displayName or "") end
+    return nation
 end
 
 function WorldState:getNationForPlayer(userId)
