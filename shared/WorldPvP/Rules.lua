@@ -22,8 +22,8 @@ Rules.TroopCapPerTile = 40
 Rules.GoldPerSecond = 1000
 
 -- Around a dozen pixels to start, with a noisy edge instead of a square blob.
-Rules.SpawnRadius = 2
-Rules.NationSpawnRadius = 2
+Rules.SpawnRadius = 1
+Rules.NationSpawnRadius = 1
 Rules.TribeSpawnRadius = 1
 Rules.DefaultAttackRatio = 0.20
 Rules.MinimumAttackRatio = 0.01
@@ -104,14 +104,14 @@ Rules.Buildings = {
 Rules.AI = {
     NationCount = 88,
     TribeCount = 140,
-    NationThinkMin = 5,
-    NationThinkMax = 9,
-    TribeThinkMin = 8,
-    TribeThinkMax = 14,
-    NationAttackRatio = 0.025,
-    TribeAttackRatio = 0.012,
-    MinimumAttackTroops = 2500,
-    BuildThinkSeconds = 24,
+    NationThinkMin = 9,
+    NationThinkMax = 16,
+    TribeThinkMin = 13,
+    TribeThinkMax = 22,
+    NationAttackRatio = 0.02,
+    TribeAttackRatio = 0.01,
+    MinimumAttackTroops = 3500,
+    BuildThinkSeconds = 30,
 }
 
 Rules.Alliance = {
