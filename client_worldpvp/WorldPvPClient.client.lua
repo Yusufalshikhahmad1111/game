@@ -1,20 +1,22 @@
 -- client_worldpvp/WorldPvPClient.client.lua
--- Full-screen political map UI. Countries are rendered as real polygon silhouettes,
--- not square tiles. Click the map to select a starting country or attack a neighbor.
-
+-- Pixel World PvP client: direct map spawn + click-to-send troop attacks.
 local Players=game:GetService("Players")
 local AssetService=game:GetService("AssetService")
-local ReplicatedStorage=game:GetService("ReplicatedStorage")
 local UserInputService=game:GetService("UserInputService")
+local ReplicatedStorage=game:GetService("ReplicatedStorage")
+
 local player=Players.LocalPlayer
+local Shared=ReplicatedStorage:WaitForChild("Shared")
+local Rules=require(Shared.WorldPvP.Rules)
+
 local remotes=ReplicatedStorage:WaitForChild("WorldPvPRemotes")
-local SelectCountry=remotes:WaitForChild("SelectCountry")
-local AttackCountry=remotes:WaitForChild("AttackCountry")
+local Spawn=remotes:WaitForChild("Spawn")
+local Attack=remotes:WaitForChild("Attack")
+local Request=remotes:WaitForChild("RequestSnapshot")
 local Snapshot=remotes:WaitForChild("Snapshot")
 local Notice=remotes:WaitForChild("Notice")
-local RequestSnapshot=remotes:WaitForChild("RequestSnapshot")
-local CountryData=require(ReplicatedStorage.Shared.WorldPvP.CountryMapData)
 
+local W,H=Rules.MapWidth,Rules.MapHeight
 local gui=Instance.new("ScreenGui")
 gui.Name="WorldPvP"
 gui.ResetOnSpawn=false
@@ -24,361 +26,263 @@ gui.Parent=player:WaitForChild("PlayerGui")
 
 local root=Instance.new("Frame")
 root.Size=UDim2.fromScale(1,1)
-root.BackgroundColor3=Color3.fromRGB(8,13,20)
+root.BackgroundColor3=Color3.fromRGB(8,12,18)
 root.BorderSizePixel=0
 root.Parent=gui
 
-local top=Instance.new("Frame")
-top.Size=UDim2.new(1,0,0,68)
-top.BackgroundColor3=Color3.fromRGB(10,17,27)
-top.BorderSizePixel=0
-top.Parent=root
+local mapFrame=Instance.new("Frame")
+mapFrame.Size=UDim2.new(1,-300,1,-72)
+mapFrame.Position=UDim2.fromOffset(8,8)
+mapFrame.BackgroundColor3=Color3.fromRGB(10,31,50)
+mapFrame.BorderSizePixel=0
+mapFrame.ClipsDescendants=true
+mapFrame.Parent=root
 
-local title=Instance.new("TextLabel")
-title.Size=UDim2.fromOffset(360,68)
-title.Position=UDim2.fromOffset(22,0)
-title.BackgroundTransparency=1
-title.Text="WORLD DOMINION"
-title.Font=Enum.Font.GothamBlack
-title.TextSize=24
-title.TextColor3=Color3.fromRGB(240,245,252)
-title.TextXAlignment=Enum.TextXAlignment.Left
-title.Parent=top
-
-local stats=Instance.new("TextLabel")
-stats.Size=UDim2.new(1,-410,68,0)
-stats.Position=UDim2.fromOffset(390,0)
-stats.BackgroundTransparency=1
-stats.Text="اختر نقطة البداية على الخريطة"
-stats.Font=Enum.Font.GothamBold
-stats.TextSize=14
-stats.TextColor3=Color3.fromRGB(185,198,215)
-stats.TextXAlignment=Enum.TextXAlignment.Right
-stats.Parent=top
-
-local mapHolder=Instance.new("Frame")
-mapHolder.Size=UDim2.new(1,-360,1,-92)
-mapHolder.Position=UDim2.fromOffset(16,80)
-mapHolder.BackgroundColor3=Color3.fromRGB(10,31,51)
-mapHolder.BorderSizePixel=0
-mapHolder.ClipsDescendants=true
-mapHolder.Parent=root
-Instance.new("UICorner",mapHolder).CornerRadius=UDim.new(0,14)
-
+local image=AssetService:CreateEditableImage({Size=Vector2.new(W,H)})
+assert(image,"EditableImage could not be created. Enable Allow Mesh / Image APIs in Experience Settings > Security.")
 local mapImage=Instance.new("ImageLabel")
+mapImage.Name="PixelWorld"
 mapImage.Size=UDim2.fromScale(1,1)
 mapImage.BackgroundTransparency=1
-mapImage.ScaleType=Enum.ScaleType.Stretch
-mapImage.Parent=mapHolder
+mapImage.ResampleMode=Enum.ResamplerMode.Pixelated
+mapImage.ImageContent=Content.fromObject(image)
+mapImage.Parent=mapFrame
 
-local mapButton=Instance.new("ImageButton")
-mapButton.Size=UDim2.fromScale(1,1)
-mapButton.BackgroundTransparency=1
-mapButton.ImageTransparency=1
-mapButton.AutoButtonColor=false
-mapButton.Parent=mapHolder
+local click=Instance.new("ImageButton")
+click.Size=UDim2.fromScale(1,1)
+click.BackgroundTransparency=1
+click.ImageTransparency=1
+click.AutoButtonColor=false
+click.Parent=mapFrame
 
-local side=Instance.new("Frame")
-side.Size=UDim2.new(0,328,1,-92)
-side.Position=UDim2.new(1,-344,0,80)
-side.BackgroundColor3=Color3.fromRGB(12,20,31)
-side.BorderSizePixel=0
-side.Parent=root
-Instance.new("UICorner",side).CornerRadius=UDim.new(0,14)
+local panel=Instance.new("Frame")
+panel.Size=UDim2.new(0,276,1,-16)
+panel.Position=UDim2.new(1,-284,0,8)
+panel.BackgroundColor3=Color3.fromRGB(13,20,30)
+panel.BorderSizePixel=0
+panel.Parent=root
+Instance.new("UICorner",panel).CornerRadius=UDim.new(0,12)
 
-local sideTitle=Instance.new("TextLabel")
-sideTitle.Size=UDim2.new(1,-28,0,42)
-sideTitle.Position=UDim2.fromOffset(14,12)
-sideTitle.BackgroundTransparency=1
-sideTitle.Text="WORLD MAP"
-sideTitle.Font=Enum.Font.GothamBlack
-sideTitle.TextSize=19
-sideTitle.TextColor3=Color3.fromRGB(240,245,252)
-sideTitle.TextXAlignment=Enum.TextXAlignment.Left
-sideTitle.Parent=side
+local title=Instance.new("TextLabel")
+title.Size=UDim2.new(1,-24,0,44)
+title.Position=UDim2.fromOffset(12,10)
+title.BackgroundTransparency=1
+title.Text="WORLD PvP"
+title.Font=Enum.Font.GothamBlack
+title.TextSize=22
+title.TextColor3=Color3.fromRGB(240,245,252)
+title.TextXAlignment=Enum.TextXAlignment.Left
+title.Parent=panel
 
-local instruction=Instance.new("TextLabel")
-instruction.Size=UDim2.new(1,-28,0,94)
-instruction.Position=UDim2.fromOffset(14,55)
-instruction.BackgroundTransparency=1
-instruction.Text="انقر على دولة غير محتلة لتضع عاصمتك. بعد البداية، انقر على دولة مجاورة لبدء الهجوم."
-instruction.TextWrapped=true
-instruction.Font=Enum.Font.Gotham
-instruction.TextSize=13
-instruction.TextColor3=Color3.fromRGB(165,181,202)
-instruction.TextXAlignment=Enum.TextXAlignment.Left
-instruction.TextYAlignment=Enum.TextYAlignment.Top
-instruction.Parent=side
+local status=Instance.new("TextLabel")
+status.Size=UDim2.new(1,-24,0,62)
+status.Position=UDim2.fromOffset(12,58)
+status.BackgroundTransparency=1
+status.Text="اختر نقطة على الخريطة"
+status.TextWrapped=true
+status.Font=Enum.Font.GothamBold
+status.TextSize=13
+status.TextColor3=Color3.fromRGB(180,195,214)
+status.TextXAlignment=Enum.TextXAlignment.Left
+status.TextYAlignment=Enum.TextYAlignment.Top
+status.Parent=panel
+
+local stats=Instance.new("TextLabel")
+stats.Size=UDim2.new(1,-24,0,108)
+stats.Position=UDim2.fromOffset(12,128)
+stats.BackgroundColor3=Color3.fromRGB(20,30,43)
+stats.BorderSizePixel=0
+stats.Text="لم يتم اختيار دولة"
+stats.TextWrapped=true
+stats.Font=Enum.Font.GothamBold
+stats.TextSize=13
+stats.TextColor3=Color3.fromRGB(225,233,244)
+stats.TextXAlignment=Enum.TextXAlignment.Left
+stats.TextYAlignment=Enum.TextYAlignment.Top
+stats.Parent=panel
+Instance.new("UICorner",stats).CornerRadius=UDim.new(0,8)
+
+local ratioTitle=Instance.new("TextLabel")
+ratioTitle.Size=UDim2.new(1,-24,0,30)
+ratioTitle.Position=UDim2.fromOffset(12,248)
+ratioTitle.BackgroundTransparency=1
+ratioTitle.Text="Attack Ratio"
+ratioTitle.Font=Enum.Font.GothamBlack
+ratioTitle.TextSize=14
+ratioTitle.TextColor3=Color3.fromRGB(230,237,246)
+ratioTitle.TextXAlignment=Enum.TextXAlignment.Left
+ratioTitle.Parent=panel
+
+local ratio=.20
+local ratioButtons={}
+local vals={.05,.10,.20,.35,.50,1}
+for i,v in ipairs(vals) do
+    local b=Instance.new("TextButton")
+    b.Size=UDim2.new(0,37,0,34)
+    b.Position=UDim2.fromOffset(12+(i-1)*42,278)
+    b.BackgroundColor3=(v==ratio and Color3.fromRGB(43,112,170) or Color3.fromRGB(27,39,53))
+    b.BorderSizePixel=0
+    b.Text=tostring(math.floor(v*100)).."%"
+    b.TextColor3=Color3.fromRGB(235,240,247)
+    b.Font=Enum.Font.GothamBold
+    b.TextSize=11
+    b.Parent=panel
+    Instance.new("UICorner",b).CornerRadius=UDim.new(0,7)
+    b.MouseButton1Click:Connect(function()
+        ratio=v
+        for _,x in ipairs(ratioButtons) do x.BackgroundColor3=Color3.fromRGB(27,39,53) end
+        b.BackgroundColor3=Color3.fromRGB(43,112,170)
+    end)
+    ratioButtons[#ratioButtons+1]=b
+end
 
 local selected=Instance.new("TextLabel")
-selected.Size=UDim2.new(1,-28,0,170)
-selected.Position=UDim2.fromOffset(14,160)
-selected.BackgroundColor3=Color3.fromRGB(18,30,45)
+selected.Size=UDim2.new(1,-24,0,86)
+selected.Position=UDim2.fromOffset(12,326)
+selected.BackgroundColor3=Color3.fromRGB(18,28,41)
 selected.BorderSizePixel=0
-selected.Text="لا توجد دولة محددة"
+selected.Text="انقر على أرض حرة للـSpawn.
+بعد الـSpawn: أي نقرة = إرسال الجيش."
 selected.TextWrapped=true
-selected.Font=Enum.Font.GothamBold
-selected.TextSize=14
-selected.TextColor3=Color3.fromRGB(225,233,244)
+selected.Font=Enum.Font.Gotham
+selected.TextSize=12
+selected.TextColor3=Color3.fromRGB(175,190,209)
 selected.TextXAlignment=Enum.TextXAlignment.Left
 selected.TextYAlignment=Enum.TextYAlignment.Top
-selected.Parent=side
-Instance.new("UICorner",selected).CornerRadius=UDim.new(0,10)
-
-local action=Instance.new("TextButton")
-action.Size=UDim2.new(1,-28,0,46)
-action.Position=UDim2.new(0,14,1,-118)
-action.BackgroundColor3=Color3.fromRGB(34,83,132)
-action.BorderSizePixel=0
-action.Text="اختيار / هجوم"
-action.TextColor3=Color3.new(1,1,1)
-action.Font=Enum.Font.GothamBlack
-action.TextSize=14
-action.Parent=side
-Instance.new("UICorner",action).CornerRadius=UDim.new(0,10)
-
-local power=Instance.new("TextLabel")
-power.Size=UDim2.new(1,-28,0,46)
-power.Position=UDim2.new(0,14,1,-66)
-power.BackgroundTransparency=1
-power.Text="القوة: 5,000 • انقر دولة مجاورة"
-power.Font=Enum.Font.GothamBold
-power.TextSize=12
-power.TextColor3=Color3.fromRGB(175,191,211)
-power.TextXAlignment=Enum.TextXAlignment.Left
-power.Parent=side
+selected.Parent=panel
+Instance.new("UICorner",selected).CornerRadius=UDim.new(0,8)
 
 local notice=Instance.new("TextLabel")
-notice.Size=UDim2.new(1,-32,0,38)
-notice.Position=UDim2.new(0,16,1,-46)
-notice.BackgroundColor3=Color3.fromRGB(13,25,39)
-notice.BackgroundTransparency=.05
-notice.BorderSizePixel=0
+notice.Size=UDim2.new(1,-24,0,70)
+notice.Position=UDim2.new(0,12,1,-82)
+notice.BackgroundTransparency=1
 notice.Text=""
+notice.TextWrapped=true
 notice.Font=Enum.Font.GothamBold
 notice.TextSize=12
-notice.TextColor3=Color3.fromRGB(170,235,190)
-notice.Parent=root
-Instance.new("UICorner",notice).CornerRadius=UDim.new(0,9)
-
-local W,H=768,384
-local image=AssetService:CreateEditableImage({Size=Vector2.new(W,H)})
-mapImage.ImageContent=Content.fromObject(image)
+notice.TextColor3=Color3.fromRGB(160,235,180)
+notice.TextXAlignment=Enum.TextXAlignment.Left
+notice.TextYAlignment=Enum.TextYAlignment.Bottom
+notice.Parent=panel
 
 local snapshot=nil
-local selectedId=nil
-local myNation=nil
-local colors={}
+local myId=nil
+local selectedTile=nil
+local colorCache={}
 
-local function rgb(c)
-    return Color3.new(c.r or .3,c.g or .5,c.b or .7)
-end
-
-local function project(lon,lat)
-    local x=(lon+180)/360*(W-1)
-    local y=(85-lat)/(85+60)*(H-1)
-    return x,y
-end
-
-local function countryColor(c)
-    if c.ownerNationId then
-        return rgb(c.color)
-    end
-    local base=((tonumber(string.byte(c.id:sub(1,1))) or 40)%9)/20
-    return Color3.new(.25+base,.29+base,.34+base)
-end
-
-local function clearBuffer()
-    local b=buffer.create(W*H*4)
-    for i=0,W*H-1 do
-        local p=i*4
-        buffer.writeu8(b,p,12)
-        buffer.writeu8(b,p+1,39)
-        buffer.writeu8(b,p+2,62)
-        buffer.writeu8(b,p+3,255)
-    end
-    return b
-end
-
-local function fillRing(b,ring,color)
-    local pts={}
-    for _,p in ipairs(ring) do
-        local x,y=project(p[1],p[2])
-        pts[#pts+1]={x=x,y=y}
-    end
-    local minY,maxY=H-1,0
-    for _,p in ipairs(pts) do
-        minY=math.min(minY,math.floor(p.y))
-        maxY=math.max(maxY,math.ceil(p.y))
-    end
-    minY=math.max(0,minY); maxY=math.min(H-1,maxY)
-    for py=minY,maxY do
-        local scan=py+.5
-        local xs={}
-        local j=#pts
-        for i=1,#pts do
-            local a,b=pts[i],pts[j]
-            if (a.y>scan) ~= (b.y>scan) then
-                local x=a.x+(scan-a.y)*(b.x-a.x)/((b.y-a.y)+1e-9)
-                xs[#xs+1]=x
-            end
-            j=i
-        end
-        table.sort(xs)
-        for i=1,#xs-1,2 do
-            local x1=math.max(0,math.ceil(xs[i]))
-            local x2=math.min(W-1,math.floor(xs[i+1]))
-            for px=x1,x2 do
-                local idx=(py*W+px)*4
-                buffer.writeu8(b,idx,math.floor(color.R*255))
-                buffer.writeu8(b,idx+1,math.floor(color.G*255))
-                buffer.writeu8(b,idx+2,math.floor(color.B*255))
-                buffer.writeu8(b,idx+3,255)
-            end
+local function ownerColor(ownerId)
+    if not ownerId or ownerId==0 then return nil end
+    if colorCache[ownerId] then return colorCache[ownerId] end
+    if snapshot and snapshot.players and snapshot.players[ownerId] then
+        local c=snapshot.players[ownerId].color
+        if c then
+            local cc=Color3.new(c[1] or c.r or .3,c[2] or c.g or .5,c[3] or c.b or .7)
+            colorCache[ownerId]=cc
+            return cc
         end
     end
-end
-
-local function drawBorders()
-    local border=Color3.fromRGB(25,31,39)
-    for _,country in ipairs(CountryData.Countries) do
-        for _,ring in ipairs(country.polygons) do
-            local previous
-            for _,p in ipairs(ring) do
-                local x,y=project(p[1],p[2])
-                local current=Vector2.new(x,y)
-                if previous then
-                    image:DrawLine(previous,current,border,0,Enum.ImageCombineType.Overwrite,Enum.AntiAliasing.Enabled)
-                end
-                previous=current
-            end
-            if previous and #ring>2 then
-                local p=ring[1]
-                local current=Vector2.new(project(p[1],p[2]))
-                image:DrawLine(previous,current,border,0,Enum.ImageCombineType.Overwrite,Enum.AntiAliasing.Enabled)
-            end
-        end
-    end
+    return Color3.fromRGB(130,145,160)
 end
 
 local function render()
     if not snapshot then return end
-    local b=clearBuffer()
-    for _,country in ipairs(snapshot.countries) do
-        local c=countryColor(country)
-        local source=CountryData.get(country.id)
-        if source then
-            for _,ring in ipairs(source.polygons) do
-                fillRing(b,ring,c)
-            end
+    local b=buffer.create(W*H*4)
+    for id,t in ipairs(snapshot.tiles) do
+        local p=(id-1)*4
+        local owner=t[1]
+        local land=t[3]==1
+        local c
+        if not land then
+            c=Color3.fromRGB(8,31,51)
+        elseif owner==0 then
+            c=Color3.fromRGB(91,99,105)
+        else
+            c=ownerColor(owner)
         end
+        buffer.writeu8(b,p,math.floor(c.R*255))
+        buffer.writeu8(b,p+1,math.floor(c.G*255))
+        buffer.writeu8(b,p+2,math.floor(c.B*255))
+        buffer.writeu8(b,p+3,255)
     end
     image:WritePixelsBuffer(Vector2.zero,Vector2.new(W,H),b)
-    drawBorders()
 end
 
-local function countryAt(x,y)
-    local lon=x/(W-1)*360-180
-    local lat=85-y/(H-1)*(85+60)
-    return CountryData.findAt(lon,lat)
+local function tileAt(rx,ry)
+    local x=math.clamp(math.floor(rx*W)+1,1,W)
+    local y=math.clamp(math.floor(ry*H)+1,1,H)
+    return (y-1)*W+x,x,y
 end
 
-local function showCountry(country)
-    if not country or not snapshot then return end
-    selectedId=country.id
-    local live
-    for _,c in ipairs(snapshot.countries) do
-        if c.id==country.id then live=c break end
-    end
-    if not live then return end
-    local mine=live.ownerUserId==player.UserId
-    local label=live.ownerName and ("القائد: "..live.ownerName) or "غير محتلة"
-    selected.Text=country.name.."\n"..label.."\n\n⚔ الجيش: "..tostring(math.floor(live.troops))
-        .."\n🪙 الذهب: "..tostring(math.floor(live.gold))
-        .."\n🌍 القارة: "..country.continent
-        .."\n\n"..(mine and "هذه أرضك." or "اضغط زر الإجراء للتوسع إذا كانت مجاورة.")
+local function updatePanel(tileId)
+    if not snapshot or not tileId then return end
+    local t=snapshot.tiles[tileId]
+    if not t then return end
+    selectedTile=tileId
+    local owner=t[1]
+    local p=owner~=0 and snapshot.players[owner] or nil
+    local name=p and p.name or "Neutral Land"
+    selected.Text="Target: "..name
+        .."\nTile: "..tostring(tileId)
+        .."\nTerrain: "..tostring(t[2])
+        .."\n\n"..(owner==0 and "أرض محايدة" or ("المالك: "..name))
 end
 
--- GuiButton click events do not provide screen X/Y coordinates.
--- InputBegan supplies an InputObject; use its Position relative to the map button.
-mapButton.InputBegan:Connect(function(inputObject)
-    local inputType = inputObject.UserInputType
-    if inputType ~= Enum.UserInputType.MouseButton1
-        and inputType ~= Enum.UserInputType.Touch then
-        return
-    end
+click.InputBegan:Connect(function(input)
+    if input.UserInputType~=Enum.UserInputType.MouseButton1
+        and input.UserInputType~=Enum.UserInputType.Touch then return end
+    if not snapshot then return end
+    local pos=input.Position
+    local abs=click.AbsolutePosition
+    local size=click.AbsoluteSize
+    local rx=math.clamp((pos.X-abs.X)/math.max(1,size.X),0,1)
+    local ry=math.clamp((pos.Y-abs.Y)/math.max(1,size.Y),0,1)
+    local tileId=tileAt(rx,ry)
+    updatePanel(tileId)
 
-    local screenPosition = inputObject.Position
-    local mapPosition = mapButton.AbsolutePosition
-    local mapSize = mapButton.AbsoluteSize
-
-    if mapSize.X <= 0 or mapSize.Y <= 0 then
-        return
-    end
-
-    local relativeX = math.clamp(
-        (screenPosition.X - mapPosition.X) / mapSize.X,
-        0,
-        1
-    )
-    local relativeY = math.clamp(
-        (screenPosition.Y - mapPosition.Y) / mapSize.Y,
-        0,
-        1
-    )
-
-    local country = countryAt(relativeX * (W - 1), relativeY * (H - 1))
-    showCountry(country)
-end)
-
-action.MouseButton1Click:Connect(function()
-    if not selectedId or not snapshot then return end
-    local live
-    for _,c in ipairs(snapshot.countries) do if c.id==selectedId then live=c break end end
-    if not live then return end
-    if not myNation then
-        if live.ownerNationId then
-            notice.Text="هذه الدولة أصبحت محجوزة. اختر أرضاً أخرى."
-            notice.TextColor3=Color3.fromRGB(255,130,130)
-            return
+    if not myId then
+        local t=snapshot.tiles[tileId]
+        if t and t[3]==1 and t[1]==0 then
+            Spawn:FireServer(tileId)
+        else
+            notice.Text="اختار أرض محايدة."
+            notice.TextColor3=Color3.fromRGB(255,125,125)
         end
-        SelectCountry:FireServer(selectedId)
-    elseif live.ownerNationId~=myNation then
-        AttackCountry:FireServer(selectedId,5000)
     else
-        notice.Text="هذه أرضك بالفعل."
+        local t=snapshot.tiles[tileId]
+        if t and t[3]==1 and t[1]~=myId then
+            Attack:FireServer(tileId,ratio)
+        elseif t and t[1]==myId then
+            notice.Text="هاي أرضك. انقر خارج حدودك للهجوم."
+        end
     end
 end)
 
 Snapshot.OnClientEvent:Connect(function(data)
     snapshot=data
-    myNation=nil
-    for _,c in ipairs(data.countries) do
-        if c.ownerUserId==player.UserId then
-            myNation=c.ownerNationId
-            break
-        end
+    myId=nil
+    colorCache={}
+    for id,p in pairs(data.players) do
+        if p.userId==player.UserId then myId=id break end
     end
-    if myNation then
-        local own
-        for _,c in ipairs(data.countries) do if c.ownerNationId==myNation then own=c break end end
-        stats.Text="دولتك: "..(own and (own.ownerName or own.name) or player.DisplayName)
-            .."   |   الجيش "..tostring(math.floor(own and own.troops or 0))
-            .."   |   اضغط على دولة مجاورة للهجوم"
-        action.Text="⚔ هجوم 5,000"
+    if myId and data.players[myId] then
+        local me=data.players[myId]
+        status.Text="دولتك: "..tostring(me.name)
+        stats.Text="⚔ الجيش: "..tostring(me.troops)
+            .."\n🪙 الذهب: "..tostring(me.gold)
+            .."\n▣ الأراضي: "..tostring(me.owned)
+            .."\n⚔ الهجمات: "..tostring(me.attacks or 0)
+        selected.Text="انقر أي بكسل عدو لإرسال "..math.floor(ratio*100).."% من جيشك."
     else
-        stats.Text="اختر نقطة البداية على الخريطة"
-        action.Text="اختر هذه الدولة"
+        status.Text="اختر نقطة البداية"
+        stats.Text="لم يتم Spawn بعد"
     end
     render()
-    if selectedId then showCountry(CountryData.get(selectedId)) end
 end)
 
 Notice.OnClientEvent:Connect(function(data)
     notice.Text=data.message or ""
-    notice.TextColor3=(data.kind=="error" and Color3.fromRGB(255,120,120))
-        or (data.kind=="warning" and Color3.fromRGB(255,210,100))
+    notice.TextColor3=(data.kind=="error" and Color3.fromRGB(255,125,125))
         or Color3.fromRGB(165,235,185)
 end)
 
-RequestSnapshot:FireServer()
+Request:FireServer()
