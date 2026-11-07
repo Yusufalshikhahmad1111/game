@@ -12,6 +12,8 @@ local Rules=require(Shared.WorldPvP.Rules)
 local remotes=ReplicatedStorage:WaitForChild("WorldPvPRemotes")
 local Spawn=remotes:WaitForChild("Spawn")
 local Attack=remotes:WaitForChild("Attack")
+local Build=remotes:WaitForChild("Build")
+local Nuke=remotes:WaitForChild("Nuke")
 local Request=remotes:WaitForChild("RequestSnapshot")
 local Snapshot=remotes:WaitForChild("Snapshot")
 local Notice=remotes:WaitForChild("Notice")
@@ -152,9 +154,42 @@ selected.TextYAlignment=Enum.TextYAlignment.Top
 selected.Parent=panel
 Instance.new("UICorner",selected).CornerRadius=UDim.new(0,8)
 
+local function makeAction(text,x,y,w,callback)
+    local b=Instance.new("TextButton")
+    b.Size=UDim2.fromOffset(w or 116,34)
+    b.Position=UDim2.fromOffset(x,y)
+    b.BackgroundColor3=Color3.fromRGB(27,39,53)
+    b.BorderSizePixel=0
+    b.Text=text
+    b.TextColor3=Color3.fromRGB(235,240,247)
+    b.Font=Enum.Font.GothamBold
+    b.TextSize=11
+    b.Parent=panel
+    Instance.new("UICorner",b).CornerRadius=UDim.new(0,7)
+    b.MouseButton1Click:Connect(callback)
+    return b
+end
+
+local buildTitle=Instance.new("TextLabel")
+buildTitle.Size=UDim2.new(1,-24,0,24)
+buildTitle.Position=UDim2.fromOffset(12,420)
+buildTitle.BackgroundTransparency=1
+buildTitle.Text="Build on selected own pixel"
+buildTitle.Font=Enum.Font.GothamBlack
+buildTitle.TextSize=12
+buildTitle.TextColor3=Color3.fromRGB(230,237,246)
+buildTitle.TextXAlignment=Enum.TextXAlignment.Left
+buildTitle.Parent=panel
+
+makeAction("City",12,448,56,function() if selectedTile then Build:FireServer(selectedTile,"City") end end)
+makeAction("Factory",74,448,70,function() if selectedTile then Build:FireServer(selectedTile,"Factory") end end)
+makeAction("Port",150,448,50,function() if selectedTile then Build:FireServer(selectedTile,"Port") end end)
+makeAction("Defense",206,448,58,function() if selectedTile then Build:FireServer(selectedTile,"DefensePost") end end)
+makeAction("☢ Nuke",12,486,74,function() if selectedTile then Nuke:FireServer(selectedTile) end end)
+
 local notice=Instance.new("TextLabel")
 notice.Size=UDim2.new(1,-24,0,70)
-notice.Position=UDim2.new(0,12,1,-82)
+notice.Position=UDim2.new(0,12,1,-62)
 notice.BackgroundTransparency=1
 notice.Text=""
 notice.TextWrapped=true
