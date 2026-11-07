@@ -78,8 +78,8 @@ Build.OnServerEvent:Connect(function(p,tileId,kind)
     local ok,msg=world:build(p.UserId,tonumber(tileId),tostring(kind))
     if not ok then notice(p,msg,"error") else notice(p,"تم بناء "..tostring(kind),"success") end
 end)
-Nuke.OnServerEvent:Connect(function(p,tileId)
-    local ok,msg=world:nuke(p.UserId,tonumber(tileId))
+Nuke.OnServerEvent:Connect(function(p,tileId,weaponKind)
+    local ok,msg=world:nuke(p.UserId,tonumber(tileId),tostring(weaponKind or "Atom"))
     if not ok then notice(p,msg,"error") else notice(p,"☢ تم إطلاق الضربة النووية.","success") end
 end)
 Request.OnServerEvent:Connect(sendWorld)
