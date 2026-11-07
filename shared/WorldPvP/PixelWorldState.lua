@@ -90,6 +90,7 @@ function State:spawnHuman(userId,displayName,tileId)
     local n=self:_newNation(id,displayName,false,"Nation",{0.18,0.72,0.98})
     n.userId=userId
     n.displayName=displayName
+    n.protectedUntil=self.time+300
     if not self:_claimSpawn(n,tileId,Rules.SpawnRadius) then
         self.players[id]=nil
         return false,"Spawn location unavailable"
@@ -147,10 +148,12 @@ end
 function State:attack(userId,targetId,ratio)
     local n=self.byUser[userId] or self.players[userId]
     if not n then return false,"Spawn first" end
+    if self.time<n.protectedUntil then return false,"You are protected for "..math.ceil(n.protectedUntil-self.time).."s" end
     local target=self.map:get(targetId)
     if not target or not target.isLand then return false,"Target must be land" end
     if target.ownerId==n.id then return false,"Already yours" end
     local defender=self.players[target.ownerId]
+    if defender and self.time<defender.protectedUntil then return false,"Target is protected" end
     local landAttack=self:_hasLandNeighbor(n,target)
     local naval=not landAttack
     if naval and not self:_canNaval(n,target) then return false,"Need a coastline to launch a sea attack" end
@@ -228,6 +231,7 @@ function State:_stepAttack(a)
     loss+=Rules.Attack.DefenderDensityFactor*density*cost.Magnitude
     if defender and defender.kind=="Tribe" then loss*=0.7 end
     if target.building=="DefensePost" then loss*=2.5 end
+    if target.building=="SAM" then loss*=1.6 end
     local speed=(pressure/Rules.Attack.SpeedCostDivisor)*cost.TileCost
     if a.naval then speed*=1.35 end
     local tilesPerStep=math.max(1,math.floor(a.troops/math.max(1,speed*900)))
@@ -264,9 +268,10 @@ function State:tick(dt)
     self.time+=dt
     for _,n in pairs(self.players) do
         if n.alive then
-            local cap=Rules.HumanStartingTroops+math.floor(n.owned*40)
+            local cap=Rules.HumanStartingTroops+math.floor(n.owned*40)+n.buildings.City*Rules.Buildings.City.TroopCapacity
             n.troops=math.min(cap,n.troops+Rules.TroopRegenerationBase+math.floor(math.sqrt(math.max(1,n.troops))/2))
-            n.gold+=Rules.GoldPerSecond*dt
+            local income=Rules.GoldPerSecond+n.buildings.City*Rules.Buildings.City.GoldPerSecond+n.buildings.Factory*Rules.Buildings.Factory.GoldPerSecond+n.buildings.Port*Rules.Buildings.Port.GoldPerSecond
+            n.gold+=income*dt
         end
     end
     for id,a in pairs(self.attacks) do
@@ -300,6 +305,49 @@ function State:_aiTick()
     end
 end
 
+function State:build(userId,tileId,kind)
+    local n=self.byUser[userId]
+    if not n then return false,"Spawn first" end
+    local t=self.map:get(tileId)
+    local spec=Rules.Buildings[kind]
+    if not t or not t.isLand or t.ownerId~=n.id then return false,"Build only on your land" end
+    if t.building then return false,"A building already exists here" end
+    if not spec then return false,"Unknown building" end
+    if n.gold<spec.Cost then return false,"Not enough gold" end
+    n.gold-=spec.Cost
+    t.building=kind
+    n.buildings[kind]=(n.buildings[kind] or 0)+1
+    return true
+end
+
+function State:nuke(userId,targetId)
+    local n=self.byUser[userId]
+    local target=self.map:get(targetId)
+    if not n or not target or not target.isLand then return false,"Invalid target" end
+    if n.gold<Rules.Nuclear.Cost then return false,"Not enough gold" end
+    if n.protectedUntil>self.time then return false,"Wait until protection ends" end
+    if (n._lastNuke or -math.huge)+Rules.Nuclear.CooldownSeconds>self.time then return false,"Nuclear cooldown active" end
+    n.gold-=Rules.Nuclear.Cost
+    n._lastNuke=self.time
+    local r=Rules.Nuclear.Radius
+    for y=math.max(1,target.y-r),math.min(self.map.height,target.y+r) do
+        for x=math.max(1,target.x-r),math.min(self.map.width,target.x+r) do
+            local dx,dy=x-target.x,y-target.y
+            if dx*dx+dy*dy<=r*r then
+                local t=self.map:get((y-1)*self.map.width+x)
+                if t and t.isLand then
+                    if t.ownerId~=n.id then
+                        t.building=nil
+                        local old=self.players[t.ownerId]
+                        if old then old.troops=math.floor(old.troops*(1-Rules.Nuclear.TroopLoss)) end
+                    end
+                end
+            end
+        end
+    end
+    return true
+end
+
 function State:tileSnapshot()
     local owners={}
     for id,t in ipairs(self.map.tiles) do owners[id]={t.ownerId,t.terrain,t.isLand and 1 or 0,t.building} end
@@ -307,7 +355,11 @@ function State:tileSnapshot()
     for id,n in pairs(self.players) do
         players[id]={id=n.id,name=n.displayName or n.name,color=n.color,troops=math.floor(n.troops),gold=math.floor(n.gold),owned=n.owned,alive=n.alive,isAI=n.isAI,kind=n.kind,userId=n.userId}
     end
-    return {matchId=self.matchId,width=self.map.width,height=self.map.height,tiles=owners,players=players,time=self.time}
+    local winner=nil
+    for id,n in pairs(self.players) do
+        if n.alive and n.owned/self.map.totalLand>=.8 then winner=id break end
+    end
+    return {matchId=self.matchId,width=self.map.width,height=self.map.height,tiles=owners,players=players,time=self.time,winner=winner,totalLand=self.map.totalLand}
 end
 
 return State
