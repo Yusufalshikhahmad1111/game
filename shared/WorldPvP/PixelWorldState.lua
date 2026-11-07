@@ -578,4 +578,35 @@ function State:tileDeltaSnapshot()
     return data
 end
 
+
+-- Initial transfer payload: owner index only. The client constructs the static
+-- land/terrain mask locally from the same public-domain geographic raster.
+function State:makeOwnerBuffer()
+    local packed=buffer.create(self.map.width*self.map.height*2)
+    for id,tile in ipairs(self.map.tiles) do
+        local ownerIndex=tile.ownerId==0 and 0 or (self.ownerIndexById[tile.ownerId] or 0)
+        buffer.writeu16(packed,(id-1)*2,ownerIndex)
+    end
+    return packed
+end
+
+-- Reconciliation delta for a player whose initial map chunks were in flight.
+function State:tileChangesSnapshotFor(ids)
+    local changes={}
+    for id in pairs(ids or {}) do
+        local tile=self.map:get(id)
+        if tile then
+            changes[#changes+1]={
+                id=id,
+                ownerIndex=tile.ownerId==0 and 0 or (self.ownerIndexById[tile.ownerId] or 0),
+                building=Rules.BuildingCodes[tile.building] or 0,
+                level=clamp(tile.buildingLevel or 0,0,255),
+            }
+        end
+    end
+    local data=self:metadataSnapshot()
+    data.tileChanges=changes
+    return data
+end
+
 return State
