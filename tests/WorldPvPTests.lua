@@ -1,6 +1,7 @@
 -- Tests for the active PixelWorldState engine (not the retired WorldState module).
 local ReplicatedStorage=game:GetService("ReplicatedStorage")
 local State=require(ReplicatedStorage.Shared.WorldPvP.PixelWorldState)
+local MapRegistry=require(ReplicatedStorage.Shared.WorldPvP.MapRegistry)
 
 local Tests={}
 
@@ -74,6 +75,13 @@ end
 
 function Tests:run()
     local passed=0
+
+    -- Map registry must expose independent geographic presets.
+    expect(MapRegistry.get("World").wrapX==true,"world map wraps horizontally")
+    expect(MapRegistry.get("Europe").wrapX==false,"regional maps do not wrap")
+    expect(MapRegistry.get("Asia").bounds.west==25,"asia uses its own geographic bounds")
+    expect(MapRegistry.get("MENA").bounds.east==68,"middle east map has independent bounds")
+    passed+=4
 
     -- Spawn must claim a valid free land pixel and register its owner.
     local state=newState()
