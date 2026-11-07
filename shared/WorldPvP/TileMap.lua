@@ -3,6 +3,7 @@
 -- frontiers instead of rigid orthogonal block expansion.
 local Rules = require(script.Parent.Rules)
 local CountryMapData = require(script.Parent.CountryMapData)
+local MapRegistry = require(script.Parent.MapRegistry)
 
 local TileMap = {}
 TileMap.__index = TileMap
@@ -34,8 +35,15 @@ local function edgeNoise(x,y)
     return (value-math.floor(value))-.5
 end
 
-function TileMap.build()
+function TileMap.build(mapId)
     local self=setmetatable({},TileMap)
+    local definition=MapRegistry.get(mapId) or MapRegistry.get(MapRegistry.Default)
+    self.mapKey=definition.id
+    self.mapTitle=definition.title
+    self.mapDescription=definition.description
+    self.victoryShare=definition.victoryShare or 0.80
+    self.wrapX=definition.wrapX==true
+    self.bounds=definition.bounds
     self.width=Rules.MapWidth
     self.height=Rules.MapHeight
     self.tiles={}
@@ -45,8 +53,8 @@ function TileMap.build()
 
     for y=1,self.height do
         for x=1,self.width do
-            local lon=-180+((x-.5)/self.width)*360
-            local lat=85-((y-.5)/self.height)*145
+            local lon=self.bounds.west+((x-.5)/self.width)*(self.bounds.east-self.bounds.west)
+            local lat=self.bounds.north-((y-.5)/self.height)*(self.bounds.north-self.bounds.south)
             local country=CountryMapData.findAt(lon,lat)
             local id=idAt(x,y,self.width)
             local tile={
@@ -79,17 +87,25 @@ function TileMap.build()
         for _,direction in ipairs(DIRECTIONS) do
             local nx=x+direction[1]
             local ny=y+direction[2]
-            if nx<1 then nx=self.width end
-            if nx>self.width then nx=1 end
-            if ny>=1 and ny<=self.height then
+            if nx<1 or nx>self.width then
+                if self.wrapX then
+                    if nx<1 then nx=self.width else nx=1 end
+                else
+                    nx=nil
+                    touchesWater=true
+                end
+            end
+            if ny<1 or ny>self.height then
+                ny=nil
+                touchesWater=true
+            end
+            if nx and ny then
                 local neighbor=self.tiles[idAt(nx,ny,self.width)]
                 if neighbor.isLand then
                     neighbors[#neighbors+1]=neighbor.id
                 else
                     touchesWater=true
                 end
-            else
-                touchesWater=true
             end
         end
         tile.neighbors=neighbors
