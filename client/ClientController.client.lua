@@ -880,7 +880,7 @@ local function updateLobbyUI(data)
         statusLbl.Size = UDim2.new(0.2, 0, 1, 0)
         statusLbl.Position = UDim2.new(0.8, 0, 0, 0)
         statusLbl.BackgroundTransparency = 1
-        statusLbl.Text = pInfo.ready and "جاهز" أو "غير جاهز"
+        statusLbl.Text = pInfo.ready and "جاهز" or "غير جاهز"
         statusLbl.TextColor3 = pInfo.ready and THEME.Success or THEME.Warning
         statusLbl.Font = Enum.Font.Gotham
         statusLbl.TextSize = 11
