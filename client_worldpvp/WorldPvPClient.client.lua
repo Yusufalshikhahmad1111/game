@@ -180,7 +180,7 @@ end)
 sendButton.BackgroundColor3=THEME.Success
 
 local selectedLabel=Instance.new("TextLabel")
-selectedLabel.Size=UDim2.new(0,245,0,52);selectedLabel.Position=UDim2.new(1,-640,0,12);selectedLabel.BackgroundTransparency=1
+selectedLabel.Size=UDim2.new(0,160,0,52);selectedLabel.Position=UDim2.new(1,-640,0,12);selectedLabel.BackgroundTransparency=1
 selectedLabel.Text="Select a pixel";selectedLabel.TextWrapped=true;selectedLabel.Font=Enum.Font.GothamBold;selectedLabel.TextSize=11
 selectedLabel.TextColor3=THEME.TextMuted;selectedLabel.TextXAlignment=Enum.TextXAlignment.Left;selectedLabel.ZIndex=21;selectedLabel.Parent=dock
 
