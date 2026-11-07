@@ -18,15 +18,16 @@ local function terrainSpec(terrain)
     return Rules.Attack.Plains
 end
 
-function State.new()
+function State.new(options)
+    options=options or {}
     local self=setmetatable({},State)
-    self.map=TileMap.build()
+    self.map=options.map or TileMap.build()
     self.players={};self.byUser={};self.ownerIds={};self.ownerIndexById={}
     self.attacks={};self.nextAttack=0;self.time=0
     self.matchId="world_"..tostring(os.time())
     self.alliances={};self.allianceRequests={}
     self.dirtyTiles={};self.buildingTiles={};self.winner=nil
-    self:_seedAI()
+    if options.seedAI~=false then self:_seedAI() end
     table.clear(self.dirtyTiles)
     return self
 end
@@ -77,16 +78,18 @@ function State:_removeTile(n,t)
 end
 
 function State:_seedAI()
+    -- Warm, legible nation colours: greens, ochres, clay and wood.
+    -- Avoids blue/cyan families throughout the world map.
     local palette={
-        {0.86,0.22,0.20},{0.20,0.48,0.90},{0.18,0.70,0.38},{0.92,0.60,0.16},
-        {0.64,0.32,0.84},{0.12,0.66,0.76},{0.88,0.32,0.54},{0.46,0.56,0.24},
-        {0.96,0.43,0.25},{0.28,0.73,0.80},
+        {0.83,0.34,0.20},{0.88,0.68,0.23},{0.31,0.58,0.27},{0.63,0.42,0.27},
+        {0.72,0.43,0.36},{0.54,0.61,0.28},{0.66,0.30,0.31},{0.81,0.73,0.43},
+        {0.40,0.48,0.24},{0.73,0.55,0.28},{0.58,0.40,0.32},{0.76,0.48,0.22},
     }
     local ids={}
     for _,country in ipairs(CountryMapData.Countries) do ids[#ids+1]=country.id end
     local used={}
     for i=1,math.min(Rules.AI.NationCount,#ids) do
-        local countryId=ids[((i-1)*2)%#ids+1]
+        local countryId=ids[i]
         if not used[countryId] then
             used[countryId]=true
             local n=self:_newNation("AI_N"..i,countryId,true,"Nation",palette[((i-1)%#palette)+1])
@@ -128,7 +131,7 @@ function State:spawnHuman(userId,displayName,tileId)
     if not tile or not tile.isLand or tile.ownerId~=0 then return false,"Choose free land" end
 
     local id="P_"..tostring(userId)
-    local n=self:_newNation(id,displayName,false,"Nation",{0.18,0.72,0.98})
+    local n=self:_newNation(id,displayName,false,"Nation",{0.31,0.58,0.27})
     n.userId=userId;n.displayName=displayName
     n.protectedUntil=self.time+Rules.ProtectionSeconds
     if not self:_claimSpawn(n,tileId,Rules.SpawnRadius) then
