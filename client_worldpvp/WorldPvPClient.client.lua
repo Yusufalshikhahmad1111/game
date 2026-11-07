@@ -28,6 +28,21 @@ local snapshot=nil
 local myId=nil
 local selectedTile=nil
 local ratio=.20
+local THEME = {
+    Background = Color3.fromRGB(18, 21, 16),
+    Top = Color3.fromRGB(27, 31, 23),
+    Panel = Color3.fromRGB(35, 37, 27),
+    Button = Color3.fromRGB(57, 51, 36),
+    Water = Color3.fromRGB(17, 35, 22),
+    NeutralLand = Color3.fromRGB(124, 113, 83),
+    Text = Color3.fromRGB(244, 237, 218),
+    TextMuted = Color3.fromRGB(187, 177, 151),
+    Success = Color3.fromRGB(137, 169, 88),
+    Gold = Color3.fromRGB(218, 177, 91),
+    Brown = Color3.fromRGB(155, 105, 66),
+    Error = Color3.fromRGB(211, 112, 83),
+}
+
 local sendTroops=5000
 local myTroops=0
 local myMaxTroops=1
@@ -44,22 +59,22 @@ gui.Name="WorldPvP";gui.ResetOnSpawn=false;gui.IgnoreGuiInset=true;gui.DisplayOr
 gui.Parent=player:WaitForChild("PlayerGui")
 
 local root=Instance.new("Frame")
-root.Size=UDim2.fromScale(1,1);root.BackgroundColor3=Color3.fromRGB(5,9,14);root.BorderSizePixel=0;root.Parent=gui
+root.Size=UDim2.fromScale(1,1);root.BackgroundColor3=THEME.Background;root.BorderSizePixel=0;root.Parent=gui
 
 local top=Instance.new("Frame")
-top.Size=UDim2.new(1,0,0,58);top.BackgroundColor3=Color3.fromRGB(11,17,25);top.BorderSizePixel=0;top.ZIndex=10;top.Parent=root
+top.Size=UDim2.new(1,0,0,58);top.BackgroundColor3=THEME.Top;top.BorderSizePixel=0;top.ZIndex=10;top.Parent=root
 local brand=Instance.new("TextLabel")
 brand.Size=UDim2.fromOffset(190,58);brand.Position=UDim2.fromOffset(18,0);brand.BackgroundTransparency=1
-brand.Text="WORLD PvP";brand.Font=Enum.Font.GothamBlack;brand.TextSize=22;brand.TextColor3=Color3.fromRGB(240,245,250)
+brand.Text="WORLD PvP";brand.Font=Enum.Font.GothamBlack;brand.TextSize=22;brand.TextColor3=THEME.Text
 brand.TextXAlignment=Enum.TextXAlignment.Left;brand.Parent=top
 local topStats=Instance.new("TextLabel")
 topStats.Size=UDim2.new(1,-430,1,0);topStats.Position=UDim2.fromOffset(215,0);topStats.BackgroundTransparency=1
 topStats.Text="Loading world...";topStats.Font=Enum.Font.GothamBold;topStats.TextSize=13
-topStats.TextColor3=Color3.fromRGB(178,191,207);topStats.TextXAlignment=Enum.TextXAlignment.Left;topStats.Parent=top
+topStats.TextColor3=THEME.TextMuted;topStats.TextXAlignment=Enum.TextXAlignment.Left;topStats.Parent=top
 
 local viewport=Instance.new("Frame")
 viewport.Name="WorldViewport";viewport.Size=UDim2.new(1,0,1,-142);viewport.Position=UDim2.fromOffset(0,58)
-viewport.BackgroundColor3=Color3.fromRGB(5,25,41);viewport.BorderSizePixel=0;viewport.ClipsDescendants=true;viewport.Parent=root
+viewport.BackgroundColor3=THEME.Water;viewport.BorderSizePixel=0;viewport.ClipsDescendants=true;viewport.Parent=root
 
 local mapLayer=Instance.new("Frame")
 mapLayer.BackgroundTransparency=1;mapLayer.AnchorPoint=Vector2.new(.5,.5);mapLayer.Position=UDim2.fromScale(.5,.5)
@@ -82,26 +97,31 @@ labelsLayer.ZIndex=6;labelsLayer.Parent=mapLayer
 
 local selection=Instance.new("Frame")
 selection.Size=UDim2.fromOffset(16,16);selection.AnchorPoint=Vector2.new(.5,.5);selection.BackgroundTransparency=1
-selection.BorderSizePixel=2;selection.BorderColor3=Color3.fromRGB(255,255,255);selection.Visible=false;selection.ZIndex=4;selection.Parent=mapLayer
+selection.BorderSizePixel=2;selection.BorderColor3=THEME.Text;selection.Visible=false;selection.ZIndex=4;selection.Parent=mapLayer
 
 local function rounded(parent)
     local c=Instance.new("UICorner");c.CornerRadius=UDim.new(0,9);c.Parent=parent
 end
 local function button(parent,text,pos,size,callback)
     local b=Instance.new("TextButton")
-    b.Size=size or UDim2.fromOffset(40,36);b.Position=pos;b.BackgroundColor3=Color3.fromRGB(25,38,52);b.BorderSizePixel=0
-    b.Text=text;b.TextColor3=Color3.fromRGB(237,243,249);b.Font=Enum.Font.GothamBold;b.TextSize=11;b.ZIndex=30;b.Parent=parent
+    b.Size=size or UDim2.fromOffset(40,36);b.Position=pos;b.BackgroundColor3=THEME.Button;b.BorderSizePixel=0
+    b.Text=text;b.TextColor3=THEME.Text;b.Font=Enum.Font.GothamBold;b.TextSize=11;b.ZIndex=30;b.Parent=parent
     rounded(b);b.MouseButton1Click:Connect(callback);return b
 end
 
+local function applyTransform()
+    mapLayer.Size=UDim2.fromScale(zoom,zoom)
+    mapLayer.Position=UDim2.new(.5,pan.X,.5,pan.Y)
+end
+
 local zoomBox=Instance.new("Frame")
-zoomBox.Size=UDim2.fromOffset(48,100);zoomBox.Position=UDim2.new(1,-62,0,76);zoomBox.BackgroundColor3=Color3.fromRGB(13,21,31)
+zoomBox.Size=UDim2.fromOffset(48,100);zoomBox.Position=UDim2.new(1,-62,0,76);zoomBox.BackgroundColor3=THEME.Panel
 zoomBox.BackgroundTransparency=.05;zoomBox.BorderSizePixel=0;zoomBox.ZIndex=20;zoomBox.Parent=root;rounded(zoomBox)
-button(zoomBox,"+",UDim2.fromOffset(5,5),nil,function() zoom=math.min(ZOOM_MAX,zoom+.25) end)
-button(zoomBox,"−",UDim2.fromOffset(5,51),nil,function() zoom=math.max(ZOOM_MIN,zoom-.25) end)
+button(zoomBox,"+",UDim2.fromOffset(5,5),nil,function() zoom=math.min(ZOOM_MAX,zoom+.25);applyTransform() end)
+button(zoomBox,"−",UDim2.fromOffset(5,51),nil,function() zoom=math.max(ZOOM_MIN,zoom-.25);applyTransform() end)
 
 local board=Instance.new("Frame")
-board.Size=UDim2.fromOffset(225,246);board.Position=UDim2.fromOffset(14,72);board.BackgroundColor3=Color3.fromRGB(10,17,26)
+board.Size=UDim2.fromOffset(225,246);board.Position=UDim2.fromOffset(14,72);board.BackgroundColor3=THEME.Panel
 board.BackgroundTransparency=.04;board.BorderSizePixel=0;board.ZIndex=20;board.Parent=root;rounded(board)
 local boardTitle=Instance.new("TextLabel")
 boardTitle.Size=UDim2.new(1,-18,0,32);boardTitle.Position=UDim2.fromOffset(9,4);boardTitle.BackgroundTransparency=1
@@ -113,51 +133,52 @@ boardList.BorderSizePixel=0;boardList.ScrollBarThickness=3;boardList.ZIndex=21;b
 local list=Instance.new("UIListLayout");list.Padding=UDim.new(0,3);list.Parent=boardList
 
 local dock=Instance.new("Frame")
-dock.Size=UDim2.new(1,-24,0,78);dock.Position=UDim2.new(0,12,1,-90);dock.BackgroundColor3=Color3.fromRGB(11,18,27)
+dock.Size=UDim2.new(1,-24,0,78);dock.Position=UDim2.new(0,12,1,-90);dock.BackgroundColor3=THEME.Panel
 dock.BorderSizePixel=0;dock.ZIndex=20;dock.Parent=root;rounded(dock)
 local dockTitle=Instance.new("TextLabel")
 dockTitle.Size=UDim2.fromOffset(112,78);dockTitle.Position=UDim2.fromOffset(12,0);dockTitle.BackgroundTransparency=1
-dockTitle.Text="ARMY\nCOMMAND";dockTitle.Font=Enum.Font.GothamBlack;dockTitle.TextSize=13;dockTitle.TextColor3=Color3.fromRGB(230,237,246)
+dockTitle.Text="ARMY\nCOMMAND";dockTitle.Font=Enum.Font.GothamBlack;dockTitle.TextSize=13;dockTitle.TextColor3=THEME.Text
 dockTitle.TextXAlignment=Enum.TextXAlignment.Left;dockTitle.TextYAlignment=Enum.TextYAlignment.Center;dockTitle.ZIndex=21;dockTitle.Parent=dock
 
 local armyLabel=Instance.new("TextLabel")
 armyLabel.Size=UDim2.fromOffset(270,20);armyLabel.Position=UDim2.fromOffset(126,5);armyLabel.BackgroundTransparency=1
-armyLabel.Text="ARMY  0 / 0";armyLabel.Font=Enum.Font.GothamBold;armyLabel.TextSize=10;armyLabel.TextColor3=Color3.fromRGB(128,149,170)
+armyLabel.Text="ARMY  0 / 0";armyLabel.Font=Enum.Font.GothamBold;armyLabel.TextSize=10;armyLabel.TextColor3=THEME.TextMuted
 armyLabel.TextXAlignment=Enum.TextXAlignment.Left;armyLabel.ZIndex=21;armyLabel.Parent=dock
 
 local meter=Instance.new("Frame")
-meter.Size=UDim2.fromOffset(270,8);meter.Position=UDim2.fromOffset(126,25);meter.BackgroundColor3=Color3.fromRGB(25,38,52)
+meter.Size=UDim2.fromOffset(270,8);meter.Position=UDim2.fromOffset(126,25);meter.BackgroundColor3=THEME.Button
 meter.BorderSizePixel=0;meter.ZIndex=21;meter.Parent=dock;rounded(meter)
 local meterFill=Instance.new("Frame")
-meterFill.Size=UDim2.fromScale(0,1);meterFill.BackgroundColor3=Color3.fromRGB(52,156,226)
+meterFill.Size=UDim2.fromScale(0,1);meterFill.BackgroundColor3=THEME.Success
 meterFill.BorderSizePixel=0;meterFill.ZIndex=22;meterFill.Parent=meter;rounded(meterFill)
 
 local amountBox=Instance.new("TextBox")
 amountBox.Size=UDim2.fromOffset(92,34);amountBox.Position=UDim2.fromOffset(405,35)
-amountBox.BackgroundColor3=Color3.fromRGB(25,38,52);amountBox.BorderSizePixel=0
-amountBox.Text="5000";amountBox.PlaceholderText="Troops";amountBox.TextColor3=Color3.fromRGB(237,243,249)
+amountBox.BackgroundColor3=THEME.Button;amountBox.BorderSizePixel=0
+amountBox.Text="5000";amountBox.PlaceholderText="Troops";amountBox.TextColor3=THEME.Text
 amountBox.Font=Enum.Font.GothamBold;amountBox.TextSize=11;amountBox.ClearTextOnFocus=false
 amountBox.ZIndex=30;amountBox.Parent=dock;rounded(amountBox)
 
 local amountSlider=Instance.new("TextButton")
 amountSlider.Size=UDim2.fromOffset(210,34);amountSlider.Position=UDim2.fromOffset(505,35)
-amountSlider.BackgroundColor3=Color3.fromRGB(25,38,52);amountSlider.BorderSizePixel=0
-amountSlider.Text="−   5k    10k    25k    50k   +";amountSlider.TextColor3=Color3.fromRGB(205,217,230)
+amountSlider.BackgroundColor3=THEME.Button;amountSlider.BorderSizePixel=0
+amountSlider.Text="−   5k    10k    25k    50k   +";amountSlider.TextColor3=THEME.TextMuted
 amountSlider.Font=Enum.Font.GothamBold;amountSlider.TextSize=10;amountSlider.ZIndex=30;amountSlider.Parent=dock;rounded(amountSlider)
 
 local sendLabel=Instance.new("TextLabel")
 sendLabel.Size=UDim2.fromOffset(260,24);sendLabel.Position=UDim2.fromOffset(126,7);sendLabel.BackgroundTransparency=1
-sendLabel.Text="SEND ARMY";sendLabel.Font=Enum.Font.GothamBold;sendLabel.TextSize=10;sendLabel.TextColor3=Color3.fromRGB(128,149,170)
+sendLabel.Text="SEND ARMY";sendLabel.Font=Enum.Font.GothamBold;sendLabel.TextSize=10;sendLabel.TextColor3=THEME.TextMuted
 sendLabel.TextXAlignment=Enum.TextXAlignment.Left;sendLabel.ZIndex=21;sendLabel.Parent=dock
 
 local sendButton=button(dock,"SEND",UDim2.new(1,-84,0,60),UDim2.fromOffset(72,34),function()
     if selectedTile and myId then Attack:FireServer(selectedTile,sendTroops) end
 end)
+sendButton.BackgroundColor3=THEME.Success
 
 local selectedLabel=Instance.new("TextLabel")
 selectedLabel.Size=UDim2.new(0,245,0,52);selectedLabel.Position=UDim2.new(1,-640,0,12);selectedLabel.BackgroundTransparency=1
 selectedLabel.Text="Select a pixel";selectedLabel.TextWrapped=true;selectedLabel.Font=Enum.Font.GothamBold;selectedLabel.TextSize=11
-selectedLabel.TextColor3=Color3.fromRGB(180,194,211);selectedLabel.TextXAlignment=Enum.TextXAlignment.Left;selectedLabel.ZIndex=21;selectedLabel.Parent=dock
+selectedLabel.TextColor3=THEME.TextMuted;selectedLabel.TextXAlignment=Enum.TextXAlignment.Left;selectedLabel.ZIndex=21;selectedLabel.Parent=dock
 
 local function buildButton(text,x,kind)
     return button(dock,text,UDim2.new(1,x,0,22),nil,function()
@@ -171,19 +192,20 @@ buildButton("DEFENSE",-160,"DefensePost").Size=UDim2.fromOffset(70,34)
 local nukeButton=button(dock,"NUKE",UDim2.new(1,-84,0,22),UDim2.fromOffset(72,34),function()
     if selectedTile then Nuke:FireServer(selectedTile) end
 end)
+nukeButton.BackgroundColor3=THEME.Brown
 
 local notice=Instance.new("TextLabel")
-notice.Size=UDim2.new(0,380,0,38);notice.Position=UDim2.new(.5,-190,0,66);notice.BackgroundColor3=Color3.fromRGB(12,19,28)
+notice.Size=UDim2.new(0,380,0,38);notice.Position=UDim2.new(.5,-190,0,66);notice.BackgroundColor3=THEME.Panel
 notice.BackgroundTransparency=.08;notice.BorderSizePixel=0;notice.Text="";notice.TextWrapped=true;notice.Font=Enum.Font.GothamBold;notice.TextSize=11
-notice.TextColor3=Color3.fromRGB(173,231,190);notice.ZIndex=50;notice.Parent=root;rounded(notice)
+notice.TextColor3=THEME.Success;notice.ZIndex=50;notice.Parent=root;rounded(notice)
 
 local function ownerColor(index)
-    if index==0 then return Color3.fromRGB(81,89,97) end
+    if index==0 then return THEME.TextMuted end
     if colorCache[index] then return colorCache[index] end
     local id=snapshot and snapshot.ownerIds and snapshot.ownerIds[index]
     local p=id and snapshot.players and snapshot.players[id]
     local c=p and p.color
-    local out=c and Color3.new(c[1] or c.r or .3,c[2] or c.g or .5,c[3] or c.b or .7) or Color3.fromRGB(120,135,150)
+    local out=c and Color3.new(c[1] or c.r or .3,c[2] or c.g or .5,c[3] or c.b or .7) or THEME.TextMuted
     colorCache[index]=out;return out
 end
 
@@ -195,8 +217,8 @@ local function paintTile(id)
     local land=landByTile[id]
     local terrain=terrainByTile[id] or 1
     local c
-    if not land then c=Color3.fromRGB(7,30,49)
-    elseif owner==0 then c=Color3.fromRGB(92,96,91)
+    if not land then c=THEME.Water
+    elseif owner==0 then c=THEME.NeutralLand
     else
         local base=ownerColor(owner);local k=terrainTint[terrain] or 1
         c=Color3.new(math.clamp(base.R*k,0,1),math.clamp(base.G*k,0,1),math.clamp(base.B*k,0,1))
@@ -219,8 +241,8 @@ local function paintChunk(packet)
         local id=(packet.y+math.floor(i/packet.w)-1)*W+(packet.x+(i%packet.w))
         ownerByTile[id]=owner;landByTile[id]=land;terrainByTile[id]=terrain
         local c
-        if not land then c=Color3.fromRGB(7,30,49)
-        elseif owner==0 then c=Color3.fromRGB(92,96,91)
+        if not land then c=THEME.Water
+        elseif owner==0 then c=THEME.NeutralLand
         else
             local base=ownerColor(owner);local k=terrainTint[terrain] or 1
             c=Color3.new(math.clamp(base.R*k,0,1),math.clamp(base.G*k,0,1),math.clamp(base.B*k,0,1))
@@ -229,11 +251,6 @@ local function paintChunk(packet)
         buffer.writeu8(out,p,math.floor(c.R*255));buffer.writeu8(out,p+1,math.floor(c.G*255));buffer.writeu8(out,p+2,math.floor(c.B*255));buffer.writeu8(out,p+3,255)
     end
     image:WritePixelsBuffer(Vector2.new(packet.x-1,packet.y-1),Vector2.new(packet.w,packet.h),out)
-end
-
-local function applyTransform()
-    mapLayer.Size=UDim2.fromScale(zoom,zoom)
-    mapLayer.Position=UDim2.new(.5,pan.X,.5,pan.Y)
 end
 
 local function clearChildren(frame)
@@ -258,7 +275,7 @@ local function renderBattleOverlay()
             line.AnchorPoint=Vector2.new(0,.5)
             line.Position=UDim2.new((sx+.5)/W,0,(sy+.5)/H,0)
             line.Size=UDim2.new(length,0,0,3)
-            line.BackgroundColor3=attack.naval and Color3.fromRGB(70,180,255) or Color3.fromRGB(255,190,70)
+            line.BackgroundColor3=attack.naval and THEME.Brown or THEME.Gold
             line.BorderSizePixel=0
             line.Rotation=math.deg(math.atan2(dy,dx))
             line.ZIndex=5
@@ -290,7 +307,7 @@ local function renderBattleOverlay()
             label.Size=UDim2.fromOffset(130,22)
             label.AnchorPoint=Vector2.new(.5,.5)
             label.Position=UDim2.new(p.labelX/W,0,p.labelY/H,0)
-            label.BackgroundColor3=Color3.fromRGB(5,9,14)
+            label.BackgroundColor3=THEME.Background
             label.BackgroundTransparency=.28
             label.BorderSizePixel=0
             label.Text=tostring(p.name).."  "..tostring(math.floor(p.owned or 0))
@@ -367,7 +384,7 @@ Snapshot.OnClientEvent:Connect(function(data)
         regenPerSecond=tonumber(me.regenPerSecond) or 0
         regenToFullSeconds=tonumber(me.regenToFullSeconds) or 0
         sendTroops=math.floor(math.clamp(tonumber(sendTroops) or 5000,100,math.max(100,myTroops)))
-        amountBox.Text=tostring(sendTroops)
+        if not amountBox:IsFocused() then amountBox.Text=tostring(sendTroops) end
         armyLabel.Text="ARMY  "..math.floor(myTroops).." / "..math.floor(myMaxTroops).."   +"..math.floor(regenPerSecond).."/s   FULL "..tostring(regenToFullSeconds).."s"
         meterFill.Size=UDim2.fromScale(math.clamp(myTroops/myMaxTroops,0,1),1)
         topStats.Text="⚔ "..math.floor(me.troops).."    🪙 "..math.floor(me.gold).."    ▣ "..me.owned.." / "..data.totalLand.."    • "..tostring(me.name)
@@ -388,7 +405,7 @@ Snapshot.OnClientEvent:Connect(function(data)
         if i>8 then break end
         local row=Instance.new("TextLabel");row.Size=UDim2.new(1,-4,0,22);row.BackgroundTransparency=1
         row.Text=string.format("%d  %s   %d",i,tostring(p.name),tonumber(p.owned) or 0);row.Font=Enum.Font.GothamBold;row.TextSize=10
-        row.TextColor3=p.userId==player.UserId and Color3.fromRGB(105,207,255) or Color3.fromRGB(190,201,214)
+        row.TextColor3=p.userId==player.UserId and THEME.Success or THEME.TextMuted
         row.TextXAlignment=Enum.TextXAlignment.Left;row.ZIndex=22;row.Parent=boardList
     end
     boardList.CanvasSize=UDim2.fromOffset(0,math.max(0,#data.players*25))
@@ -396,14 +413,14 @@ Snapshot.OnClientEvent:Connect(function(data)
     if data.winner then
         local win=data.players[data.winner]
         notice.Text="🏆 "..tostring(win and win.name or data.winner).." controls 80% of the world."
-        notice.TextColor3=Color3.fromRGB(255,215,110)
+        notice.TextColor3=THEME.Gold
     end
 end)
 
 Chunk.OnClientEvent:Connect(paintChunk)
 Notice.OnClientEvent:Connect(function(data)
     notice.Text=data.message or ""
-    notice.TextColor3=data.kind=="error" and Color3.fromRGB(255,135,135) or Color3.fromRGB(173,231,190)
+    notice.TextColor3=data.kind=="error" and THEME.Error or THEME.Success
 end)
 
 amountBox.FocusLost:Connect(function()
