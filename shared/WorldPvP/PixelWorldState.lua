@@ -469,6 +469,114 @@ function State:nuke(userId,targetId,weaponKind)
     return true,weaponKind.." strike launched"
 end
 
+-- AI construction is server-authoritative and only uses owned pixels.
+function State:_aiBuild(n)
+    if not n or not n.alive or not n.isAI then return false end
+    local preferred
+    if (n.buildings.City or 0)<2 then
+        preferred="City"
+    elseif (n.buildings.Port or 0)<1 and n.coast then
+        preferred="Port"
+    elseif (n.buildings.Factory or 0)<3 then
+        preferred="Factory"
+    elseif (n.buildings.DefensePost or 0)<2 then
+        preferred="DefensePost"
+    else
+        preferred="Factory"
+    end
+
+    local spec=Rules.Buildings[preferred]
+    if not spec or n.gold<(spec.Cost or math.huge) then return false end
+    local candidates={}
+    for _,tileId in ipairs(n.tileIds) do
+        local tile=self.map:get(tileId)
+        if tile and tile.ownerId==n.id and not tile.building
+            and (not spec.RequiresCoast or tile.isCoastal) then
+            candidates[#candidates+1]=tile
+        end
+    end
+
+    -- If a preferred coastal structure cannot be placed, keep the economy
+    -- functioning with an inland factory instead of silently idling.
+    if #candidates==0 and preferred=="Port" then
+        preferred="Factory"
+        spec=Rules.Buildings.Factory
+        if n.gold<spec.Cost then return false end
+        for _,tileId in ipairs(n.tileIds) do
+            local tile=self.map:get(tileId)
+            if tile and tile.ownerId==n.id and not tile.building then
+                candidates[#candidates+1]=tile
+            end
+        end
+    end
+    if #candidates==0 then return false end
+
+    table.sort(candidates,function(a,b)
+        local aBorder,bBorder=0,0
+        for _,id in ipairs(a.neighbors or {}) do
+            local t=self.map:get(id)
+            if t and t.ownerId~=n.id then aBorder+=1 end
+        end
+        for _,id in ipairs(b.neighbors or {}) do
+            local t=self.map:get(id)
+            if t and t.ownerId~=n.id then bBorder+=1 end
+        end
+        return aBorder>bBorder
+    end)
+    local chosen=candidates[1]
+    return self:_buildForNation(n,chosen,preferred)
+end
+
+-- The AI uses the same spawn-protection, alliance, troop and combat validation
+-- as human players. It chooses the weakest adjacent frontier it can pressure.
+function State:_aiTick()
+    local now=self.time
+    for _,n in pairs(self.players) do
+        if n.isAI and n.alive then
+            if (n._nextAI or 0)<=now then
+                local minimum=n.kind=="Tribe" and Rules.AI.TribeThinkMin or Rules.AI.NationThinkMin
+                local maximum=n.kind=="Tribe" and Rules.AI.TribeThinkMax or Rules.AI.NationThinkMax
+                n._nextAI=now+minimum+math.random()*(maximum-minimum)
+                local borders=self:_borderTiles(n)
+                if #borders>0 and n.troops>Rules.AI.MinimumAttackTroops then
+                    local candidates={}
+                    local considered={}
+                    for _,sourceId in ipairs(borders) do
+                        local source=self.map:get(sourceId)
+                        for _,targetId in ipairs(source and source.neighbors or {}) do
+                            if not considered[targetId] then
+                                considered[targetId]=true
+                                local target=self.map:get(targetId)
+                                if target and target.isLand and target.ownerId~=n.id
+                                    and not self:_areAllied(n.id,target.ownerId) then
+                                    local defender=self.players[target.ownerId]
+                                    if not (defender and now<defender.protectedUntil) then
+                                        local score=target.ownerId==0 and -100000
+                                            or (defender and defender.troops/math.max(1,defender.owned) or 0)
+                                        if target.terrain=="Mountain" then score+=180 end
+                                        if target.building=="DefensePost" then score+=500 end
+                                        candidates[#candidates+1]={id=targetId,score=score}
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    table.sort(candidates,function(a,b) return a.score<b.score end)
+                    if candidates[1] then
+                        local ratio=n.kind=="Tribe" and Rules.AI.TribeAttackRatio or Rules.AI.NationAttackRatio
+                        self:attack(n.id,candidates[1].id,ratio)
+                    end
+                end
+            end
+
+            if (n._nextBuild or 0)<=now then
+                n._nextBuild=now+Rules.AI.BuildThinkSeconds+math.random()*8
+                self:_aiBuild(n)
+            end
+        end
+    end
+end
+
 function State:tick(dt)
     dt=clamp(tonumber(dt) or 0,0,.25);self.time+=dt
     for _,n in pairs(self.players) do
