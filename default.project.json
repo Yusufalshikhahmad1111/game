@@ -318,7 +318,7 @@
             "Position": [
               0,
               3,
-              2
+              -15
             ],
             "Material": "Wood",
             "Color": [
@@ -424,6 +424,228 @@
               "HoldDuration": 0,
               "MaxActivationDistance": 12,
               "RequiresLineOfSight": false
+            }
+          },
+          "TeamsBillboard": {
+            "$className": "BillboardGui",
+            "$properties": {
+              "Adornee": null,
+              "Size": [
+                0,
+                220,
+                0,
+                68
+              ],
+              "StudsOffset": [
+                0,
+                4,
+                0
+              ],
+              "AlwaysOnTop": true,
+              "LightInfluence": 0,
+              "MaxDistance": 80
+            },
+            "Title": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  40
+                ],
+                "Position": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "TEAMS",
+                "TextColor3": [
+                  0.9,
+                  0.73,
+                  0.35
+                ],
+                "TextStrokeTransparency": 0.45,
+                "Font": "GothamBlack",
+                "TextScaled": true
+              }
+            },
+            "Subtitle": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  24
+                ],
+                "Position": [
+                  0,
+                  0,
+                  0,
+                  40
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "اختر نمط الفرق",
+                "TextColor3": [
+                  0.84,
+                  0.8,
+                  0.68
+                ],
+                "TextStrokeTransparency": 0.55,
+                "Font": "GothamBold",
+                "TextScaled": true
+              }
+            }
+          },
+          "FFABillboard": {
+            "$className": "BillboardGui",
+            "$properties": {
+              "Adornee": null,
+              "Size": [
+                0,
+                220,
+                0,
+                68
+              ],
+              "StudsOffset": [
+                0,
+                4,
+                0
+              ],
+              "AlwaysOnTop": true,
+              "LightInfluence": 0,
+              "MaxDistance": 80
+            },
+            "Title": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  40
+                ],
+                "Position": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "FREE FOR ALL",
+                "TextColor3": [
+                  0.9,
+                  0.73,
+                  0.35
+                ],
+                "TextStrokeTransparency": 0.45,
+                "Font": "GothamBlack",
+                "TextScaled": true
+              }
+            },
+            "Subtitle": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  24
+                ],
+                "Position": [
+                  0,
+                  0,
+                  0,
+                  40
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "كل لاعب لنفسه",
+                "TextColor3": [
+                  0.84,
+                  0.8,
+                  0.68
+                ],
+                "TextStrokeTransparency": 0.55,
+                "Font": "GothamBold",
+                "TextScaled": true
+              }
+            }
+          },
+          "SoloBillboard": {
+            "$className": "BillboardGui",
+            "$properties": {
+              "Adornee": null,
+              "Size": [
+                0,
+                220,
+                0,
+                68
+              ],
+              "StudsOffset": [
+                0,
+                4,
+                0
+              ],
+              "AlwaysOnTop": true,
+              "LightInfluence": 0,
+              "MaxDistance": 80
+            },
+            "Title": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  40
+                ],
+                "Position": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "SOLO",
+                "TextColor3": [
+                  0.9,
+                  0.73,
+                  0.35
+                ],
+                "TextStrokeTransparency": 0.45,
+                "Font": "GothamBlack",
+                "TextScaled": true
+              }
+            },
+            "Subtitle": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  24
+                ],
+                "Position": [
+                  0,
+                  0,
+                  0,
+                  40
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "فردي ضد البوتات",
+                "TextColor3": [
+                  0.84,
+                  0.8,
+                  0.68
+                ],
+                "TextStrokeTransparency": 0.55,
+                "Font": "GothamBold",
+                "TextScaled": true
+              }
             }
           }
         },
@@ -556,6 +778,302 @@
               "MaxActivationDistance": 11,
               "RequiresLineOfSight": false
             }
+          },
+          "WorldBillboard": {
+            "$className": "BillboardGui",
+            "$properties": {
+              "Adornee": null,
+              "Size": [
+                0,
+                220,
+                0,
+                68
+              ],
+              "StudsOffset": [
+                0,
+                4,
+                0
+              ],
+              "AlwaysOnTop": true,
+              "LightInfluence": 0,
+              "MaxDistance": 80
+            },
+            "Title": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  40
+                ],
+                "Position": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "WORLD",
+                "TextColor3": [
+                  0.9,
+                  0.73,
+                  0.35
+                ],
+                "TextStrokeTransparency": 0.45,
+                "Font": "GothamBlack",
+                "TextScaled": true
+              }
+            },
+            "Subtitle": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  24
+                ],
+                "Position": [
+                  0,
+                  0,
+                  0,
+                  40
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "الخريطة العالمية",
+                "TextColor3": [
+                  0.84,
+                  0.8,
+                  0.68
+                ],
+                "TextStrokeTransparency": 0.55,
+                "Font": "GothamBold",
+                "TextScaled": true
+              }
+            }
+          },
+          "EuropeBillboard": {
+            "$className": "BillboardGui",
+            "$properties": {
+              "Adornee": null,
+              "Size": [
+                0,
+                220,
+                0,
+                68
+              ],
+              "StudsOffset": [
+                0,
+                4,
+                0
+              ],
+              "AlwaysOnTop": true,
+              "LightInfluence": 0,
+              "MaxDistance": 80
+            },
+            "Title": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  40
+                ],
+                "Position": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "EUROPE",
+                "TextColor3": [
+                  0.9,
+                  0.73,
+                  0.35
+                ],
+                "TextStrokeTransparency": 0.45,
+                "Font": "GothamBlack",
+                "TextScaled": true
+              }
+            },
+            "Subtitle": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  24
+                ],
+                "Position": [
+                  0,
+                  0,
+                  0,
+                  40
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "أوروبا",
+                "TextColor3": [
+                  0.84,
+                  0.8,
+                  0.68
+                ],
+                "TextStrokeTransparency": 0.55,
+                "Font": "GothamBold",
+                "TextScaled": true
+              }
+            }
+          },
+          "AsiaBillboard": {
+            "$className": "BillboardGui",
+            "$properties": {
+              "Adornee": null,
+              "Size": [
+                0,
+                220,
+                0,
+                68
+              ],
+              "StudsOffset": [
+                0,
+                4,
+                0
+              ],
+              "AlwaysOnTop": true,
+              "LightInfluence": 0,
+              "MaxDistance": 80
+            },
+            "Title": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  40
+                ],
+                "Position": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "ASIA",
+                "TextColor3": [
+                  0.9,
+                  0.73,
+                  0.35
+                ],
+                "TextStrokeTransparency": 0.45,
+                "Font": "GothamBlack",
+                "TextScaled": true
+              }
+            },
+            "Subtitle": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  24
+                ],
+                "Position": [
+                  0,
+                  0,
+                  0,
+                  40
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "آسيا",
+                "TextColor3": [
+                  0.84,
+                  0.8,
+                  0.68
+                ],
+                "TextStrokeTransparency": 0.55,
+                "Font": "GothamBold",
+                "TextScaled": true
+              }
+            }
+          },
+          "MENABillboard": {
+            "$className": "BillboardGui",
+            "$properties": {
+              "Adornee": null,
+              "Size": [
+                0,
+                220,
+                0,
+                68
+              ],
+              "StudsOffset": [
+                0,
+                4,
+                0
+              ],
+              "AlwaysOnTop": true,
+              "LightInfluence": 0,
+              "MaxDistance": 80
+            },
+            "Title": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  40
+                ],
+                "Position": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "MIDDLE EAST",
+                "TextColor3": [
+                  0.9,
+                  0.73,
+                  0.35
+                ],
+                "TextStrokeTransparency": 0.45,
+                "Font": "GothamBlack",
+                "TextScaled": true
+              }
+            },
+            "Subtitle": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  24
+                ],
+                "Position": [
+                  0,
+                  0,
+                  0,
+                  40
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "الشرق الأوسط",
+                "TextColor3": [
+                  0.84,
+                  0.8,
+                  0.68
+                ],
+                "TextStrokeTransparency": 0.55,
+                "Font": "GothamBold",
+                "TextScaled": true
+              }
+            }
           }
         },
         "EnterPad": {
@@ -578,6 +1096,80 @@
               0.58,
               0.25
             ]
+          },
+          "EnterBillboard": {
+            "$className": "BillboardGui",
+            "$properties": {
+              "Adornee": null,
+              "Size": [
+                0,
+                220,
+                0,
+                68
+              ],
+              "StudsOffset": [
+                0,
+                4,
+                0
+              ],
+              "AlwaysOnTop": true,
+              "LightInfluence": 0,
+              "MaxDistance": 80
+            },
+            "Title": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  40
+                ],
+                "Position": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "ENTER WORLD",
+                "TextColor3": [
+                  0.9,
+                  0.73,
+                  0.35
+                ],
+                "TextStrokeTransparency": 0.45,
+                "Font": "GothamBlack",
+                "TextScaled": true
+              }
+            },
+            "Subtitle": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  24
+                ],
+                "Position": [
+                  0,
+                  0,
+                  0,
+                  40
+                ],
+                "BackgroundTransparency": 1,
+                "Text": "ابدأ المباراة",
+                "TextColor3": [
+                  0.84,
+                  0.8,
+                  0.68
+                ],
+                "TextStrokeTransparency": 0.55,
+                "Font": "GothamBold",
+                "TextScaled": true
+              }
+            }
           }
         },
         "EnterPrompt": {
