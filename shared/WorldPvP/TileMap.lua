@@ -1,25 +1,37 @@
--- shared/WorldPvP/TileMap.lua
--- Pixel/tile world derived from public-domain Natural Earth country shapes.
--- Ownership is per tile; country borders are only the initial land mask.
-
+-- High-resolution geographic world raster.
+-- Ownership is per land pixel. Eight-way adjacency gives rounded, organic
+-- frontiers instead of rigid orthogonal block expansion.
 local Rules = require(script.Parent.Rules)
 local CountryMapData = require(script.Parent.CountryMapData)
 
 local TileMap = {}
 TileMap.__index = TileMap
 
-local function idAt(x,y)
-    return (y-1)*Rules.MapWidth+x
+local DIRECTIONS = {
+    {-1,-1},{0,-1},{1,-1},
+    {-1,0},         {1,0},
+    {-1,1}, {0,1},  {1,1},
+}
+
+local function idAt(x,y,width)
+    return (y-1)*width+x
 end
 
 local function terrainAt(x,y,countryId)
     local seed=x*73856093+y*19349663
-    for i=1,#countryId do seed+=string.byte(countryId,i)*(i*83492791) end
-    local v=math.abs(math.sin(seed*0.000001)*43758.5453)%1
-    if v>.94 then return "Mountain" end
-    if v>.76 then return "Highland" end
-    if v>.48 then return "Forest" end
+    for i=1,#countryId do
+        seed+=string.byte(countryId,i)*(i*83492791)
+    end
+    local value=math.abs(math.sin(seed*0.000001)*43758.5453)%1
+    if value>.965 then return "Mountain" end
+    if value>.79 then return "Highland" end
+    if value>.48 then return "Forest" end
     return "Plains"
+end
+
+local function edgeNoise(x,y)
+    local value=math.sin(x*127.1+y*311.7)*43758.5453
+    return (value-math.floor(value))-.5
 end
 
 function TileMap.build()
@@ -36,57 +48,83 @@ function TileMap.build()
             local lon=-180+((x-.5)/self.width)*360
             local lat=85-((y-.5)/self.height)*145
             local country=CountryMapData.findAt(lon,lat)
-            local id=idAt(x,y)
+            local id=idAt(x,y,self.width)
             local tile={
                 id=id,x=x,y=y,lon=lon,lat=lat,
                 isLand=country~=nil,
                 countryId=country and country.id or nil,
                 terrain=country and terrainAt(x,y,country.id) or "Water",
-                ownerId=0,building=nil,isCoastal=false,neighbors={}
+                ownerId=0,building=nil,buildingLevel=0,
+                isCoastal=false,neighbors=nil,
             }
             self.tiles[id]=tile
             if tile.isLand then
                 self.totalLand+=1
                 self.landTiles[#self.landTiles+1]=id
-                self.countryTiles[tile.countryId]=self.countryTiles[tile.countryId] or {}
-                table.insert(self.countryTiles[tile.countryId],id)
+                local list=self.countryTiles[tile.countryId]
+                if not list then
+                    list={}
+                    self.countryTiles[tile.countryId]=list
+                end
+                list[#list+1]=id
             end
         end
     end
 
-    for _,tile in ipairs(self.tiles) do
+    for _,tileId in ipairs(self.landTiles) do
+        local tile=self.tiles[tileId]
         local x,y=tile.x,tile.y
-        local dirs={{-1,0},{1,0},{0,-1},{0,1}}
-        local water=false
-        for _,d in ipairs(dirs) do
-            local nx,ny=x+d[1],y+d[2]
+        local neighbors={}
+        local touchesWater=false
+        for _,direction in ipairs(DIRECTIONS) do
+            local nx=x+direction[1]
+            local ny=y+direction[2]
             if nx<1 then nx=self.width end
             if nx>self.width then nx=1 end
             if ny>=1 and ny<=self.height then
-                local n=self.tiles[idAt(nx,ny)]
-                table.insert(tile.neighbors,n.id)
-                if not n.isLand then water=true end
-            else water=true end
+                local neighbor=self.tiles[idAt(nx,ny,self.width)]
+                if neighbor.isLand then
+                    neighbors[#neighbors+1]=neighbor.id
+                else
+                    touchesWater=true
+                end
+            else
+                touchesWater=true
+            end
         end
-        tile.isCoastal=tile.isLand and water
+        tile.neighbors=neighbors
+        tile.isCoastal=touchesWater
     end
+
     return self
 end
 
-function TileMap:get(id) return self.tiles[id] end
+function TileMap:get(id)
+    if type(id)~="number" or id%1~=0 or id<1 or id>#self.tiles then
+        return nil
+    end
+    return self.tiles[id]
+end
 
 function TileMap:findSpawnTiles(centerId,radius)
-    local c=self.tiles[centerId]
-    if not c or not c.isLand then return {} end
+    local center=self:get(centerId)
+    if not center or not center.isLand then return {} end
     local result={}
-    for y=math.max(1,c.y-radius),math.min(self.height,c.y+radius) do
-        for x=math.max(1,c.x-radius),math.min(self.width,c.x+radius) do
-            local dx,dy=x-c.x,y-c.y
-            if dx*dx+dy*dy<=radius*radius then
-                local t=self.tiles[idAt(x,y)]
-                if t.isLand and t.ownerId==0 then table.insert(result,t.id) end
+    for y=math.max(1,center.y-radius-1),math.min(self.height,center.y+radius+1) do
+        for x=math.max(1,center.x-radius-1),math.min(self.width,center.x+radius+1) do
+            local dx,dy=x-center.x,y-center.y
+            local distanceSquared=dx*dx+dy*dy
+            local variedRadius=radius+edgeNoise(x,y)*0.48
+            if distanceSquared<=variedRadius*variedRadius then
+                local tile=self.tiles[idAt(x,y,self.width)]
+                if tile.isLand and tile.ownerId==0 then
+                    result[#result+1]=tile.id
+                end
             end
         end
+    end
+    if #result==0 and center.ownerId==0 then
+        result[1]=center.id
     end
     return result
 end
@@ -95,26 +133,18 @@ function TileMap:countryCenterTile(countryId)
     local list=self.countryTiles[countryId]
     if not list or #list==0 then return nil end
     local country=CountryMapData.get(countryId)
+    if not country then return list[1] end
     local cx,cy=country.center[1],country.center[2]
-    local best,bestD=nil,math.huge
+    local best,bestDistance=nil,math.huge
     for _,id in ipairs(list) do
-        local t=self.tiles[id]
-        local dx,dy=t.lon-cx,t.lat-cy
-        local d=dx*dx+dy*dy
-        if d<bestD then best,bestD=id,d end
+        local tile=self.tiles[id]
+        local dx,dy=tile.lon-cx,tile.lat-cy
+        local distance=dx*dx+dy*dy
+        if distance<bestDistance then
+            best,bestDistance=id,distance
+        end
     end
     return best
-end
-
-function TileMap:neighbors(id,landOnly)
-    local t=self.tiles[id]
-    local result={}
-    if not t then return result end
-    for _,nid in ipairs(t.neighbors) do
-        local n=self.tiles[nid]
-        if not landOnly or n.isLand then table.insert(result,nid) end
-    end
-    return result
 end
 
 return TileMap

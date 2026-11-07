@@ -642,32 +642,68 @@ for _, country in ipairs(Data.Countries) do
     byId[country.id] = country
 end
 
+-- Spatial bins: only test country polygons whose bounding boxes overlap the
+-- current 5-degree geographic bucket. This is crucial for the 1024x512 raster.
+local BIN_SIZE = 5
+local BIN_X_MAX = 72
+local BIN_Y_MAX = 29
+local bins = {}
+
+local function binKey(x,y)
+    return tostring(x)..":"..tostring(y)
+end
+
+for _,country in ipairs(Data.Countries) do
+    local bbox=country.bbox
+    local minX=math.clamp(math.floor((bbox[1]+180)/BIN_SIZE),0,BIN_X_MAX)
+    local maxX=math.clamp(math.floor((bbox[3]+180)/BIN_SIZE),0,BIN_X_MAX)
+    local minY=math.clamp(math.floor((bbox[2]+60)/BIN_SIZE),0,BIN_Y_MAX)
+    local maxY=math.clamp(math.floor((bbox[4]+60)/BIN_SIZE),0,BIN_Y_MAX)
+    for y=minY,maxY do
+        for x=minX,maxX do
+            local key=binKey(x,y)
+            local bucket=bins[key]
+            if not bucket then
+                bucket={}
+                bins[key]=bucket
+            end
+            bucket[#bucket+1]=country
+        end
+    end
+end
+
 function Data.get(id)
     return byId[id]
 end
 
-local function pointInRing(lon, lat, ring)
-    local inside = false
-    local j = #ring
-    for i = 1, #ring do
-        local a, b = ring[i], ring[j]
-        local yi, yj = a[2], b[2]
-        if (yi > lat) ~= (yj > lat) then
-            local cross = (b[1] - a[1]) * (lat - yi) / ((yj - yi) + 1e-9) + a[1]
-            if lon < cross then inside = not inside end
+local function pointInRing(lon,lat,ring)
+    local inside=false
+    local j=#ring
+    for i=1,#ring do
+        local a,b=ring[i],ring[j]
+        local yi,yj=a[2],b[2]
+        if (yi>lat)~=(yj>lat) then
+            local cross=(b[1]-a[1])*(lat-yi)/((yj-yi)+1e-9)+a[1]
+            if lon<cross then inside=not inside end
         end
-        j = i
+        j=i
     end
     return inside
 end
 
-function Data.findAt(lon, lat)
-    if lon < -180 or lon > 180 or lat < -60 or lat > 85 then return nil end
-    for _, country in ipairs(Data.Countries) do
-        local b = country.bbox
-        if lon >= b[1] and lon <= b[3] and lat >= b[2] and lat <= b[4] then
-            for _, ring in ipairs(country.polygons) do
-                if pointInRing(lon, lat, ring) then
+function Data.findAt(lon,lat)
+    if lon < -180 or lon > 180 or lat < -60 or lat > 85 then
+        return nil
+    end
+    local bx=math.clamp(math.floor((lon+180)/BIN_SIZE),0,BIN_X_MAX)
+    local by=math.clamp(math.floor((lat+60)/BIN_SIZE),0,BIN_Y_MAX)
+    local bucket=bins[binKey(bx,by)]
+    if not bucket then return nil end
+    for _,country in ipairs(bucket) do
+        local bbox=country.bbox
+        if lon>=bbox[1] and lon<=bbox[3] and lat>=bbox[2] and lat<=bbox[4] then
+            for _,ring in ipairs(country.polygons) do
+                if pointInRing(lon,lat,ring) then
                     return country
                 end
             end
