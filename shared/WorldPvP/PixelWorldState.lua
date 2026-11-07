@@ -33,7 +33,9 @@ function State:_newNation(id,name,isAI,kind,color)
         troops=isAI and (kind=="Tribe" and Rules.TribeStartingTroops or Rules.NationStartingTroops) or Rules.HumanStartingTroops,
         gold=isAI and Rules.BotStartingGold or Rules.HumanStartingGold,
         owned=0,alive=true,coast=false,userId=nil,displayName=nil,
-        kills=0,attacks=0
+        kills=0,attacks=0,
+        buildings={City=0,Factory=0,Port=0,DefensePost=0,MissileSilo=0,SAM=0},
+        protectedUntil=0,nukes=0
     }
     self.players[id]=n
     return n
@@ -268,10 +270,25 @@ function State:tick(dt)
     self.time+=dt
     for _,n in pairs(self.players) do
         if n.alive then
-            local cap=Rules.HumanStartingTroops+math.floor(n.owned*40)+n.buildings.City*Rules.Buildings.City.TroopCapacity
-            n.troops=math.min(cap,n.troops+Rules.TroopRegenerationBase+math.floor(math.sqrt(math.max(1,n.troops))/2))
-            local income=Rules.GoldPerSecond+n.buildings.City*Rules.Buildings.City.GoldPerSecond+n.buildings.Factory*Rules.Buildings.Factory.GoldPerSecond+n.buildings.Port*Rules.Buildings.Port.GoldPerSecond
-            n.gold+=income*dt
+            -- Defensive defaults keep older snapshots / AI records safe when new
+            -- economy fields are introduced in a later build.
+            n.buildings=n.buildings or {}
+            n.buildings.City=n.buildings.City or 0
+            n.buildings.Factory=n.buildings.Factory or 0
+            n.buildings.Port=n.buildings.Port or 0
+            n.buildings.DefensePost=n.buildings.DefensePost or 0
+            n.buildings.MissileSilo=n.buildings.MissileSilo or 0
+            n.buildings.SAM=n.buildings.SAM or 0
+            local cap=Rules.HumanStartingTroops+math.floor(n.owned*40)
+                +n.buildings.City*Rules.Buildings.City.TroopCapacity
+            local growth=Rules.TroopRegenerationBase
+                +math.floor(math.sqrt(math.max(1,n.troops))/2)
+            n.troops=math.min(cap,n.troops+growth)
+            local income=Rules.GoldPerSecond
+                +n.buildings.City*Rules.Buildings.City.GoldPerSecond
+                +n.buildings.Factory*Rules.Buildings.Factory.GoldPerSecond
+                +n.buildings.Port*Rules.Buildings.Port.GoldPerSecond
+            n.gold=(n.gold or 0)+income*dt
         end
     end
     for id,a in pairs(self.attacks) do
