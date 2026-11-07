@@ -1102,7 +1102,8 @@ local function showInspector(cellData)
     local byStr = ""
     for rt, amt in pairs(by) do
         if byStr ~= "" then byStr = byStr .. "  |  " end
-        local ico = {Gold="🪙", Food="🍖", Wood="🪵", Relic="🔮"}[rt] or ""
+        local icons = {Gold="🪙", Food="🍖", Wood="🪵", Relic="🔮"}
+        local ico = icons[rt] or ""
         byStr = byStr .. ico .. rt .. " +" .. amt
     end
     if byStr ~= "" then
