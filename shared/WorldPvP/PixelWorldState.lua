@@ -410,97 +410,63 @@ function State:retreat(userId,attackId)
     return true,refund
 end
 
-function State:nuke(userId,targetId)
+function State:nuke(userId,targetId,weaponKind)
     local n=self.byUser[userId]
     if not n or not n.alive then return false,"Deploy first" end
     local target=self.map:get(math.floor(tonumber(targetId) or 0))
     if not target or not target.isLand then return false,"Invalid target" end
     if (n.buildings.MissileSilo or 0)<1 then return false,"Build a Missile Silo first" end
-    if n.gold<Rules.Nuclear.Cost then return false,"Not enough gold" end
+    weaponKind=Rules.Nuclear.Weapons[weaponKind] and weaponKind or "Atom"
+    local weapon=Rules.Nuclear.Weapons[weaponKind]
+    if n.gold<weapon.Cost then return false,"Not enough gold" end
     if self.time<n.protectedUntil then return false,"Your nation is protected" end
-    if (n._lastNuke or -math.huge)+Rules.Nuclear.CooldownSeconds>self.time then return false,"Nuclear cooldown active" end
+    local last=n._lastNuke and n._lastNuke[weaponKind] or -math.huge
+    if last+weapon.CooldownSeconds>self.time then return false,weaponKind.." cooldown active" end
     local defender=self.players[target.ownerId]
     if defender and (defender.buildings.SAM or 0)>0 and math.random()<math.min(.75,.18*defender.buildings.SAM) then
-        n.gold-=math.floor(Rules.Nuclear.Cost*.25);n._lastNuke=self.time
+        n.gold-=math.floor(weapon.Cost*.25)
+        n._lastNuke=n._lastNuke or {};n._lastNuke[weaponKind]=self.time
         return false,"Missile intercepted by enemy SAM network"
     end
-    n.gold-=Rules.Nuclear.Cost;n._lastNuke=self.time;n.nukes+=1
-    local radius=Rules.Nuclear.Radius
-    for y=math.max(1,target.y-radius),math.min(self.map.height,target.y+radius) do
-        for x=math.max(1,target.x-radius),math.min(self.map.width,target.x+radius) do
-            local dx,dy=x-target.x,y-target.y
-            if dx*dx+dy*dy<=radius*radius then
-                local t=self.map:get((y-1)*self.map.width+x)
-                if t and t.isLand and t.ownerId~=n.id then
-                    if t.building then
-                        local old=self.players[t.ownerId]
-                        if old then
-                            old.buildings[t.building]=math.max(0,(old.buildings[t.building] or 0)-1)
-                            old.buildingLevels[t.building]=math.max(0,(old.buildingLevels[t.building] or 0)-(t.buildingLevel or 1))
-                        end
-                        t.building=nil;t.buildingLevel=0;self.buildingTiles[t.id]=nil
-                    end
-                    local old=self.players[t.ownerId]
-                    if old then old.troops=math.floor(old.troops*(1-Rules.Nuclear.TroopLoss)) end
-                    self:_markDirty(t.id)
-                end
-            end
+
+    n.gold-=weapon.Cost
+    n._lastNuke=n._lastNuke or {};n._lastNuke[weaponKind]=self.time
+    n.nukes+=1
+    local radius=weapon.Radius
+    local warheads=weapon.Warheads or 1
+    local impactOffsets={{0,0}}
+    if warheads>1 then
+        impactOffsets={}
+        for i=1,warheads do
+            local angle=(i-1)*math.pi*2/warheads
+            impactOffsets[#impactOffsets+1]={math.floor(math.cos(angle)*radius*.45),math.floor(math.sin(angle)*radius*.45)}
         end
     end
-    return true,"Nuclear strike launched"
-end
-
-function State:_aiBuild(n)
-    local kind="Factory"
-    if (n.buildings.City or 0)<2 then kind="City"
-    elseif (n.buildings.Port or 0)<1 then kind="Port" end
-    local spec=Rules.Buildings[kind]
-    if n.gold<spec.Cost then return end
-    local candidates={}
-    for _,id in ipairs(n.tileIds) do
-        local t=self.map:get(id)
-        if t and t.ownerId==n.id and not t.building and (not spec.RequiresCoast or t.isCoastal) then
-            candidates[#candidates+1]=t
-        end
-    end
-    if #candidates>0 then self:_buildForNation(n,candidates[math.random(1,#candidates)],kind) end
-end
-
-function State:_aiTick()
-    local now=self.time
-    for _,n in pairs(self.players) do
-        if n.isAI and n.alive then
-            if (n._nextAI or 0)<=now then
-                local minimum=n.kind=="Tribe" and Rules.AI.TribeThinkMin or Rules.AI.NationThinkMin
-                local maximum=n.kind=="Tribe" and Rules.AI.TribeThinkMax or Rules.AI.NationThinkMax
-                n._nextAI=now+minimum+math.random()*(maximum-minimum)
-                local borders=self:_borderTiles(n)
-                if #borders>0 and n.troops>Rules.AI.MinimumAttackTroops then
-                    local targetId,best=nil,math.huge
-                    for _=1,math.min(10,#borders) do
-                        local source=self.map:get(borders[math.random(1,#borders)])
-                        for _,neighborId in ipairs(source.neighbors or {}) do
-                            local t=self.map:get(neighborId)
-                            if t and t.ownerId~=n.id and not self:_areAllied(n.id,t.ownerId) then
-                                local defender=self.players[t.ownerId]
-                                local score=t.ownerId==0 and -100000 or (defender and defender.troops or 0)
-                                if defender and now<defender.protectedUntil then score=math.huge end
-                                if score<best then targetId,best=t.id,score end
+    for _,offset in ipairs(impactOffsets) do
+        local cx,cy=target.x+offset[1],target.y+offset[2]
+        for y=math.max(1,cy-radius),math.min(self.map.height,cy+radius) do
+            for x=math.max(1,cx-radius),math.min(self.map.width,cx+radius) do
+                local dx,dy=x-cx,y-cy
+                if dx*dx+dy*dy<=radius*radius then
+                    local t=self.map:get((y-1)*self.map.width+x)
+                    if t and t.isLand and t.ownerId~=n.id then
+                        if t.building then
+                            local old=self.players[t.ownerId]
+                            if old then
+                                old.buildings[t.building]=math.max(0,(old.buildings[t.building] or 0)-1)
+                                old.buildingLevels[t.building]=math.max(0,(old.buildingLevels[t.building] or 0)-(t.buildingLevel or 1))
                             end
+                            t.building=nil;t.buildingLevel=0;self.buildingTiles[t.id]=nil
                         end
-                    end
-                    if targetId then
-                        local ratio=n.kind=="Tribe" and Rules.AI.TribeAttackRatio or Rules.AI.NationAttackRatio
-                        self:attack(n.id,targetId,ratio)
+                        local old=self.players[t.ownerId]
+                        if old then old.troops=math.floor(old.troops*(1-weapon.TroopLoss)) end
+                        self:_markDirty(t.id)
                     end
                 end
             end
-            if (n._nextBuild or 0)<=now then
-                n._nextBuild=now+Rules.AI.BuildThinkSeconds+math.random()*8
-                self:_aiBuild(n)
-            end
         end
     end
+    return true,weaponKind.." strike launched"
 end
 
 function State:tick(dt)
@@ -509,7 +475,7 @@ function State:tick(dt)
         if n.alive then
             local lv=n.buildingLevels
             local city=lv.City or 0
-            local cap=Rules.HumanStartingTroops+n.owned*Rules.TroopCapPerTile+city*Rules.Buildings.City.TroopCapacity
+            local cap=Rules.HumanStartingTroops+(math.max(1,n.owned)^0.6)*Rules.TroopCapPerTile*1000+city*Rules.Buildings.City.TroopCapacity
             -- OpenFront-style nonlinear regeneration: faster at low army,
             -- tapering smoothly as the army approaches its capacity.
             local fill=cap>0 and clamp(1-(n.troops/cap),0,1) or 0
@@ -534,8 +500,9 @@ function State:tick(dt)
     end
     self:_aiTick()
     if not self.winner and self.map.totalLand>0 then
+        local victoryShare=self.map.victoryShare or 0.80
         for id,n in pairs(self.players) do
-            if n.alive and n.owned/self.map.totalLand>=.8 then self.winner=id;break end
+            if n.alive and n.owned/self.map.totalLand>=victoryShare then self.winner=id;break end
         end
     end
 end
@@ -549,7 +516,7 @@ local function packPlayers(self)
         end
         local lx,ly=0,0
         if n.owned>0 then lx=n.centerXSum/n.owned;ly=n.centerYSum/n.owned end
-        local maxTroops=Rules.HumanStartingTroops+n.owned*Rules.TroopCapPerTile
+        local maxTroops=Rules.HumanStartingTroops+(math.max(1,n.owned)^0.6)*Rules.TroopCapPerTile*1000
             +(n.buildingLevels.City or 0)*Rules.Buildings.City.TroopCapacity
         local fill=maxTroops>0 and clamp(1-(n.troops/maxTroops),0,1) or 0
         local regenPerSecond=(Rules.TroopRegenerationBase+(math.max(0,n.troops)^0.73)/4)
