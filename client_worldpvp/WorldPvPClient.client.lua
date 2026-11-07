@@ -321,6 +321,7 @@ end
 
 local function applyMapTransform()
     mapLayer.Size=UDim2.fromScale(zoom,zoom)
+    mapLayer.Position=UDim2.new(.5,pan.X,.5,pan.Y)
 end
 
 local function tileAt(pos)
@@ -372,6 +373,7 @@ click.InputChanged:Connect(function(input)
     if input.UserInputType==Enum.UserInputType.MouseMovement and dragging then
         local d=input.Position-dragStart
         pan=panStart+d
+        applyMapTransform()
     end
 end)
 
