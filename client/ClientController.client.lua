@@ -1217,6 +1217,19 @@ LobbyState.OnClientEvent:Connect(function(data)
     updateLobbyUI(data)
 end)
 
+-- MatchState is the authoritative match lifecycle signal.
+-- Use it as a second UI transition path so the match HUD cannot remain
+-- stuck on the lobby if the initial map update is missed during startup.
+MatchState.OnClientEvent:Connect(function(data)
+    if data and data.active then
+        isGameActive = true
+        showMatchUI()
+    elseif data and data.active == false then
+        isGameActive = false
+        showLobbyUI()
+    end
+end)
+
 UpdateMap.OnClientEvent:Connect(function(data, team, active)
     currentTeam = team or "Player"
     isGameActive = active
