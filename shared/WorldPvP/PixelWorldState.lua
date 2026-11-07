@@ -145,7 +145,7 @@ function State:_canNaval(n,target)
 end
 
 function State:attack(userId,targetId,ratio)
-    local n=self.byUser[userId]
+    local n=self.byUser[userId] or self.players[userId]
     if not n then return false,"Spawn first" end
     local target=self.map:get(targetId)
     if not target or not target.isLand then return false,"Target must be land" end
@@ -293,7 +293,7 @@ function State:_aiTick()
                 if #candidates>0 then
                     local target=candidates[math.random(1,#candidates)]
                     local ratio=n.kind=="Tribe" and Rules.AI.TribeAttackRatio or Rules.AI.NationAttackRatio
-                    self:attack(n.userId or ("AI:"..n.id),target,ratio)
+                    self:attack(n.id,target,ratio)
                 end
             end
         end
