@@ -6,7 +6,7 @@ local Rules = {}
 Rules.MapWidth = 1024
 Rules.MapHeight = 512
 Rules.MaxPlayers = 55
-Rules.ProtectionSeconds = 300
+Rules.ProtectionSeconds = 15
 
 Rules.TickSeconds = 0.1
 Rules.SnapshotSeconds = 0.30
