@@ -336,7 +336,8 @@ click.InputBegan:Connect(function(input)
     local owner=ownerByTile[id] or 0
     local ownerIdForTile=snapshot.ownerIds[owner]
     if not myId and owner==0 then Spawn:FireServer(id)
-    elseif myId and owner~=0 and ownerIdForTile~=myId then Attack:FireServer(id,ratio)
+    elseif myId and ownerIdForTile~=myId then
+        -- Target selected. Press SEND to commit the chosen army.
     end
 end)
 
