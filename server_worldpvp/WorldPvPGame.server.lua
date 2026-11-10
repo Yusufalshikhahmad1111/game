@@ -314,7 +314,7 @@ Nuke.OnServerEvent:Connect(function(player,tileId,weaponKind)
         return
     end
     local id=validInteger(tileId,1,world.map.width*world.map.height)
-    local weapon=Validation.choice(weaponKind,VALID_WEAPONS) or "Atom"
+    local weapon=weaponKind==nil and "Atom" or Validation.choice(weaponKind,VALID_WEAPONS)
     if not id or not weapon then
         notice(player,"نوع السلاح النووي غير صالح.","error")
         return
