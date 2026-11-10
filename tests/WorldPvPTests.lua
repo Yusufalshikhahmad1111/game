@@ -2,6 +2,8 @@
 local ReplicatedStorage=game:GetService("ReplicatedStorage")
 local State=require(ReplicatedStorage.Shared.WorldPvP.PixelWorldState)
 local MapRegistry=require(ReplicatedStorage.Shared.WorldPvP.MapRegistry)
+local RateLimiter=require(ReplicatedStorage.Shared.WorldPvP.RateLimiter)
+local RemoteValidation=require(ReplicatedStorage.Shared.WorldPvP.RemoteValidation)
 
 local Tests={}
 
@@ -75,6 +77,26 @@ end
 
 function Tests:run()
     local passed=0
+
+    -- Remote boundary validation rejects malformed values.
+    expect(RemoteValidation.integer(16,1,49)==16,"integer validator accepts valid id")
+    expect(RemoteValidation.integer("16",1,49)==16,"integer validator normalizes numeric strings")
+    expect(RemoteValidation.integer(1.5,1,49)==nil,"integer validator rejects fractions")
+    expect(RemoteValidation.integer(0,1,49)==nil,"integer validator rejects out of range ids")
+    expect(RemoteValidation.choice("FFA",{FFA=true,Teams=true})=="FFA","choice validator accepts allowed value")
+    expect(RemoteValidation.choice("ADMIN",{FFA=true,Teams=true})==nil,"choice validator rejects unknown value")
+    passed+=6
+
+    -- Rate limiting is per-user and per-action.
+    local limiter=RateLimiter.new()
+    expect(limiter:allow(1,"Attack",1,10)==true,"rate limiter allows first action")
+    expect(limiter:allow(1,"Attack",1,10.5)==false,"rate limiter blocks repeated action")
+    expect(limiter:allow(1,"Build",1,10.5)==true,"rate limiter separates action buckets")
+    expect(limiter:allow(2,"Attack",1,10.5)==true,"rate limiter separates users")
+    expect(limiter:allow(1,"Attack",1,11)==true,"rate limiter allows after interval")
+    limiter:reset(1)
+    expect(limiter:allow(1,"Attack",1,11)==true,"rate limiter reset clears user state")
+    passed+=6
 
     -- Map registry must expose independent geographic presets.
     expect(MapRegistry.get("World").wrapX==true,"world map wraps horizontally")
