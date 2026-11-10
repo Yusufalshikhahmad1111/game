@@ -273,7 +273,7 @@ Attack.OnServerEvent:Connect(function(player,tileId,amount)
         notice(player,"لم تدخل المباراة بعد.","error")
         return
     end
-    local id=validInteger(tileId,1,world.map.width*world.map.height)
+    local id=Validation.integer(tileId,1,world.map.width*world.map.height)
     local troops=Validation.integer(amount,Rules.Attack.MinimumCommit,1000000000)
     if not id or not troops then
         notice(player,"بيانات الهجوم غير صالحة.","error")
@@ -293,7 +293,7 @@ Build.OnServerEvent:Connect(function(player,tileId,kind)
         notice(player,"لم تدخل المباراة بعد.","error")
         return
     end
-    local id=validInteger(tileId,1,world.map.width*world.map.height)
+    local id=Validation.integer(tileId,1,world.map.width*world.map.height)
     local buildKind=Validation.choice(kind,VALID_BUILDINGS)
     if not id or not buildKind then
         notice(player,"أمر البناء غير صالح.","error")
@@ -313,7 +313,7 @@ Nuke.OnServerEvent:Connect(function(player,tileId,weaponKind)
         notice(player,"لم تدخل المباراة بعد.","error")
         return
     end
-    local id=validInteger(tileId,1,world.map.width*world.map.height)
+    local id=Validation.integer(tileId,1,world.map.width*world.map.height)
     local weapon=weaponKind==nil and "Atom" or Validation.choice(weaponKind,VALID_WEAPONS)
     if not id or not weapon then
         notice(player,"نوع السلاح النووي غير صالح.","error")
