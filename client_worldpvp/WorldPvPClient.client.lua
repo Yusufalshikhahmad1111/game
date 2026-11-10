@@ -20,12 +20,17 @@ local Notice=remotes:WaitForChild("Notice")
 local EnterWorld=remotes:WaitForChild("EnterWorld")
 
 local W,H=Rules.MapWidth,Rules.MapHeight
-local ZOOM_MIN,ZOOM_MAX=.65,4.5
+local ZOOM_MIN,ZOOM_MAX=.35,4.5
 local zoom=1
 local pan=Vector2.zero
 local dragging=false
 local dragStart=Vector2.zero
 local panStart=Vector2.zero
+local activeTouch=nil
+local touchStart=Vector2.zero
+local touchMoved=false
+local touchThreshold=10
+local userMovedMap=false
 local snapshot=nil
 local myId=nil
 local selectedTile=nil
@@ -64,6 +69,9 @@ gui.Parent=player:WaitForChild("PlayerGui")
 
 local root=Instance.new("Frame")
 root.Size=UDim2.fromScale(1,1);root.BackgroundColor3=THEME.Background;root.BorderSizePixel=0;root.Parent=gui
+local rootScale=Instance.new("UIScale")
+rootScale.Scale=1
+rootScale.Parent=root
 
 local top=Instance.new("Frame")
 top.Size=UDim2.new(1,0,0,58);top.BackgroundColor3=THEME.Top;top.BorderSizePixel=0;top.ZIndex=10;top.Parent=root
@@ -108,19 +116,39 @@ local function rounded(parent)
 end
 local function button(parent,text,pos,size,callback)
     local b=Instance.new("TextButton")
-    b.Size=size or UDim2.fromOffset(40,36);b.Position=pos;b.BackgroundColor3=THEME.Button;b.BorderSizePixel=0
-    b.Text=text;b.TextColor3=THEME.Text;b.Font=Enum.Font.GothamBold;b.TextSize=11;b.ZIndex=30;b.Parent=parent
-    rounded(b);b.MouseButton1Click:Connect(callback);return b
+    b.Size=size or UDim2.fromOffset(44,44);b.Position=pos;b.BackgroundColor3=THEME.Button;b.BorderSizePixel=0
+    b.Text=text;b.TextColor3=THEME.Text;b.Font=Enum.Font.GothamBold;b.TextSize=11;b.ZIndex=30;b.AutoButtonColor=false;b.Parent=parent
+    rounded(b);b.Activated:Connect(callback);return b
 end
 
 local mapButton=button(top,"MAP",UDim2.new(1,-122,0,12),UDim2.fromOffset(48,34),function() end)
 mapButton.BackgroundColor3=THEME.Gold
+local viewportPadding=12
 local function applyTransform()
-    -- Keep each source pixel at native size when zoom=1. The old scale-to-
-    -- viewport behavior stretched 1024x512 into the screen and made borders
-    -- look like huge blocks.
-    mapLayer.Size=UDim2.fromOffset(W*zoom,H*zoom)
-    mapLayer.Position=UDim2.new(.5,pan.X,.5,pan.Y)
+    mapLayer.Size=UDim2.fromOffset(math.floor(W*zoom),math.floor(H*zoom))
+    mapLayer.Position=UDim2.new(.5,math.floor(pan.X),.5,math.floor(pan.Y))
+end
+
+local function fitMapToViewport()
+    local size=viewport.AbsoluteSize
+    if size.X<=0 or size.Y<=0 then return end
+    local fit=math.min((size.X-viewportPadding*2)/W,(size.Y-viewportPadding*2)/H)
+    zoom=math.clamp(fit,ZOOM_MIN,1.25)
+    pan=Vector2.zero
+    userMovedMap=false
+    applyTransform()
+end
+
+local function updateResponsiveScale()
+    local size=workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280,720)
+    local compact=size.X<700 or size.Y<620
+    rootScale.Scale=1
+    board.Size=UDim2.fromOffset(compact and 190 or 225,compact and 214 or 246)
+    board.Position=UDim2.fromOffset(10,compact and 68 or 72)
+    mapPanel.Size=UDim2.fromOffset(compact and 228 or 260,compact and 208 or 210)
+    mapPanel.Position=UDim2.new(1,-(compact and 240 or 278),0,68)
+    notice.Size=UDim2.new(1,-(compact and 24 or 380),0,38)
+    notice.Position=UDim2.new(.5,0,0,66)
 end
 
 local zoomBox=Instance.new("Frame")
@@ -142,81 +170,168 @@ boardList.BorderSizePixel=0;boardList.ScrollBarThickness=3;boardList.ZIndex=21;b
 local list=Instance.new("UIListLayout");list.Padding=UDim.new(0,3);list.Parent=boardList
 
 local dock=Instance.new("Frame")
-dock.Size=UDim2.new(1,-24,0,78);dock.Position=UDim2.new(0,12,1,-90);dock.BackgroundColor3=THEME.Panel
-dock.BorderSizePixel=0;dock.ZIndex=20;dock.Parent=root;rounded(dock)
+dock.Size=UDim2.new(1,-24,0,126)
+dock.Position=UDim2.new(0,12,1,-138)
+dock.BackgroundColor3=THEME.Panel
+dock.BorderSizePixel=0
+dock.ZIndex=20
+dock.Parent=root
+rounded(dock)
+
 local dockTitle=Instance.new("TextLabel")
-dockTitle.Size=UDim2.fromOffset(112,78);dockTitle.Position=UDim2.fromOffset(12,0);dockTitle.BackgroundTransparency=1
-dockTitle.Text="ARMY\nCOMMAND";dockTitle.Font=Enum.Font.GothamBlack;dockTitle.TextSize=13;dockTitle.TextColor3=THEME.Text
-dockTitle.TextXAlignment=Enum.TextXAlignment.Left;dockTitle.TextYAlignment=Enum.TextYAlignment.Center;dockTitle.ZIndex=21;dockTitle.Parent=dock
+dockTitle.Size=UDim2.fromOffset(96,24)
+dockTitle.Position=UDim2.fromOffset(12,3)
+dockTitle.BackgroundTransparency=1
+dockTitle.Text="ARMY"
+dockTitle.Font=Enum.Font.GothamBlack
+dockTitle.TextSize=13
+dockTitle.TextColor3=THEME.Text
+dockTitle.TextXAlignment=Enum.TextXAlignment.Left
+dockTitle.ZIndex=21
+dockTitle.Parent=dock
 
 local armyLabel=Instance.new("TextLabel")
-armyLabel.Size=UDim2.fromOffset(270,20);armyLabel.Position=UDim2.fromOffset(126,5);armyLabel.BackgroundTransparency=1
-armyLabel.Text="ARMY  0 / 0";armyLabel.Font=Enum.Font.GothamBold;armyLabel.TextSize=10;armyLabel.TextColor3=THEME.TextMuted
-armyLabel.TextXAlignment=Enum.TextXAlignment.Left;armyLabel.ZIndex=21;armyLabel.Parent=dock
+armyLabel.Size=UDim2.new(1,-120,0,20)
+armyLabel.Position=UDim2.fromOffset(108,3)
+armyLabel.BackgroundTransparency=1
+armyLabel.Text="ARMY  0 / 0"
+armyLabel.Font=Enum.Font.GothamBold
+armyLabel.TextSize=10
+armyLabel.TextColor3=THEME.TextMuted
+armyLabel.TextXAlignment=Enum.TextXAlignment.Left
+armyLabel.ZIndex=21
+armyLabel.Parent=dock
 
 local meter=Instance.new("Frame")
-meter.Size=UDim2.fromOffset(270,8);meter.Position=UDim2.fromOffset(126,25);meter.BackgroundColor3=THEME.Button
-meter.BorderSizePixel=0;meter.ZIndex=21;meter.Parent=dock;rounded(meter)
+meter.Size=UDim2.new(1,-120,0,8)
+meter.Position=UDim2.fromOffset(108,24)
+meter.BackgroundColor3=THEME.Button
+meter.BorderSizePixel=0
+meter.ZIndex=21
+meter.Parent=dock
+rounded(meter)
+
 local meterFill=Instance.new("Frame")
-meterFill.Size=UDim2.fromScale(0,1);meterFill.BackgroundColor3=THEME.Success
-meterFill.BorderSizePixel=0;meterFill.ZIndex=22;meterFill.Parent=meter;rounded(meterFill)
+meterFill.Size=UDim2.fromScale(0,1)
+meterFill.BackgroundColor3=THEME.Success
+meterFill.BorderSizePixel=0
+meterFill.ZIndex=22
+meterFill.Parent=meter
+rounded(meterFill)
+
+local controlRow=Instance.new("ScrollingFrame")
+controlRow.Size=UDim2.new(1,-24,0,38)
+controlRow.Position=UDim2.fromOffset(12,34)
+controlRow.BackgroundTransparency=1
+controlRow.BorderSizePixel=0
+controlRow.ScrollBarThickness=0
+controlRow.ScrollingDirection=Enum.ScrollingDirection.X
+controlRow.AutomaticCanvasSize=Enum.AutomaticSize.X
+controlRow.ZIndex=23
+controlRow.Parent=dock
+
+local controlLayout=Instance.new("UIListLayout")
+controlLayout.FillDirection=Enum.FillDirection.Horizontal
+controlLayout.Padding=UDim.new(0,6)
+controlLayout.VerticalAlignment=Enum.VerticalAlignment.Center
+controlLayout.Parent=controlRow
 
 local amountBox=Instance.new("TextBox")
-amountBox.Size=UDim2.fromOffset(92,34);amountBox.Position=UDim2.fromOffset(405,35)
-amountBox.BackgroundColor3=THEME.Button;amountBox.BorderSizePixel=0
-amountBox.Text="5000";amountBox.PlaceholderText="Troops";amountBox.TextColor3=THEME.Text
-amountBox.Font=Enum.Font.GothamBold;amountBox.TextSize=11;amountBox.ClearTextOnFocus=false
-amountBox.ZIndex=30;amountBox.Parent=dock;rounded(amountBox)
+amountBox.Size=UDim2.fromOffset(90,38)
+amountBox.BackgroundColor3=THEME.Button
+amountBox.BorderSizePixel=0
+amountBox.Text="5000"
+amountBox.PlaceholderText="Troops"
+amountBox.TextColor3=THEME.Text
+amountBox.Font=Enum.Font.GothamBold
+amountBox.TextSize=12
+amountBox.ClearTextOnFocus=false
+amountBox.ZIndex=30
+amountBox.Parent=controlRow
+rounded(amountBox)
 
 local amountSlider=Instance.new("TextButton")
-amountSlider.Size=UDim2.fromOffset(210,34);amountSlider.Position=UDim2.fromOffset(505,35)
-amountSlider.BackgroundColor3=THEME.Button;amountSlider.BorderSizePixel=0
-amountSlider.Text="−   5k    10k    25k    50k   +";amountSlider.TextColor3=THEME.TextMuted
-amountSlider.Font=Enum.Font.GothamBold;amountSlider.TextSize=10;amountSlider.ZIndex=30;amountSlider.Parent=dock;rounded(amountSlider)
+amountSlider.Size=UDim2.fromOffset(176,38)
+amountSlider.BackgroundColor3=THEME.Button
+amountSlider.BorderSizePixel=0
+amountSlider.Text="−  1k   5k   10k   25k   +"
+amountSlider.TextColor3=THEME.TextMuted
+amountSlider.Font=Enum.Font.GothamBold
+amountSlider.TextSize=10
+amountSlider.AutoButtonColor=false
+amountSlider.ZIndex=30
+amountSlider.Parent=controlRow
+rounded(amountSlider)
 
-local sendLabel=Instance.new("TextLabel")
-sendLabel.Size=UDim2.fromOffset(260,24);sendLabel.Position=UDim2.fromOffset(126,7);sendLabel.BackgroundTransparency=1
-sendLabel.Text="SEND ARMY";sendLabel.Font=Enum.Font.GothamBold;sendLabel.TextSize=10;sendLabel.TextColor3=THEME.TextMuted
-sendLabel.TextXAlignment=Enum.TextXAlignment.Left;sendLabel.ZIndex=21;sendLabel.Parent=dock
-
-local sendButton=button(dock,"SEND",UDim2.new(1,-84,0,60),UDim2.fromOffset(72,34),function()
+local sendButton=button(controlRow,"SEND",UDim2.fromOffset(0,0),UDim2.fromOffset(76,38),function()
     if selectedTile and myId then Attack:FireServer(selectedTile,sendTroops) end
 end)
 sendButton.BackgroundColor3=THEME.Success
 
-local selectedLabel=Instance.new("TextLabel")
-selectedLabel.Size=UDim2.new(0,160,0,52);selectedLabel.Position=UDim2.new(1,-640,0,12);selectedLabel.BackgroundTransparency=1
-selectedLabel.Text="Select a pixel";selectedLabel.TextWrapped=true;selectedLabel.Font=Enum.Font.GothamBold;selectedLabel.TextSize=11
-selectedLabel.TextColor3=THEME.TextMuted;selectedLabel.TextXAlignment=Enum.TextXAlignment.Left;selectedLabel.ZIndex=21;selectedLabel.Parent=dock
+local actionRow=Instance.new("ScrollingFrame")
+actionRow.Size=UDim2.new(1,-24,0,42)
+actionRow.Position=UDim2.fromOffset(12,80)
+actionRow.BackgroundTransparency=1
+actionRow.BorderSizePixel=0
+actionRow.ScrollBarThickness=0
+actionRow.ScrollingDirection=Enum.ScrollingDirection.X
+actionRow.AutomaticCanvasSize=Enum.AutomaticSize.X
+actionRow.ZIndex=23
+actionRow.Parent=dock
 
-local function buildButton(text,x,kind)
-    return button(dock,text,UDim2.new(1,x,0,22),nil,function()
+local actionLayout=Instance.new("UIListLayout")
+actionLayout.FillDirection=Enum.FillDirection.Horizontal
+actionLayout.Padding=UDim.new(0,6)
+actionLayout.VerticalAlignment=Enum.VerticalAlignment.Center
+actionLayout.Parent=actionRow
+
+local selectedLabel=Instance.new("TextLabel")
+selectedLabel.Size=UDim2.fromOffset(160,42)
+selectedLabel.BackgroundTransparency=1
+selectedLabel.Text="Select a pixel"
+selectedLabel.TextWrapped=true
+selectedLabel.Font=Enum.Font.GothamBold
+selectedLabel.TextSize=10
+selectedLabel.TextColor3=THEME.TextMuted
+selectedLabel.TextXAlignment=Enum.TextXAlignment.Left
+selectedLabel.TextYAlignment=Enum.TextYAlignment.Center
+selectedLabel.ZIndex=21
+selectedLabel.Parent=actionRow
+
+local function buildButton(text,kind,width)
+    return button(actionRow,text,UDim2.fromOffset(0,0),UDim2.fromOffset(width or 66,42),function()
         if selectedTile then Build:FireServer(selectedTile,kind) end
     end)
 end
-buildButton("CITY",-370,"City").Size=UDim2.fromOffset(62,34)
-buildButton("FACTORY",-302,"Factory").Size=UDim2.fromOffset(72,34)
-buildButton("PORT",-224,"Port").Size=UDim2.fromOffset(58,34)
-buildButton("DEFENSE",-160,"DefensePost").Size=UDim2.fromOffset(70,34)
-buildButton("SAM",-438,"SAM").Size=UDim2.fromOffset(52,34)
-buildButton("SILO",-496,"MissileSilo").Size=UDim2.fromOffset(56,34)
-buildButton("SHIP",-558,"Warship").Size=UDim2.fromOffset(58,34)
-local nukeButton=button(dock,"ATOM",UDim2.new(1,-84,0,22),UDim2.fromOffset(72,34),function()
+
+buildButton("CITY","City",62)
+buildButton("FACTORY","Factory",76)
+buildButton("PORT","Port",58)
+buildButton("DEFENSE","DefensePost",78)
+buildButton("SAM","SAM",52)
+buildButton("SILO","MissileSilo",60)
+buildButton("SHIP","Warship",60)
+
+local nukeButton=button(actionRow,"ATOM",UDim2.fromOffset(0,0),UDim2.fromOffset(76,42),function()
     if selectedTile and myId then Nuke:FireServer(selectedTile,selectedWeapon) end
 end)
 nukeButton.BackgroundColor3=THEME.Brown
-local hydroButton=button(dock,"HYDRO",UDim2.new(1,-162,0,22),UDim2.fromOffset(72,34),function()
-    selectedWeapon="Hydrogen";nukeButton.Text="HYDRO"
+
+local hydroButton=button(actionRow,"HYDRO",UDim2.fromOffset(0,0),UDim2.fromOffset(76,42),function()
+    selectedWeapon="Hydrogen"
+    nukeButton.Text="HYDRO"
 end)
 hydroButton.BackgroundColor3=THEME.Brown
-local mirvButton=button(dock,"MIRV",UDim2.new(1,-240,0,22),UDim2.fromOffset(72,34),function()
-    selectedWeapon="MIRV";nukeButton.Text="MIRV"
+
+local mirvButton=button(actionRow,"MIRV",UDim2.fromOffset(0,0),UDim2.fromOffset(76,42),function()
+    selectedWeapon="MIRV"
+    nukeButton.Text="MIRV"
 end)
 mirvButton.BackgroundColor3=THEME.Brown
 
 local mapPanel=Instance.new("Frame")
 mapPanel.Size=UDim2.fromOffset(260,210)
-mapPanel.Position=UDim2.new(1,-278,0,72)
+mapPanel.Position=UDim2.new(1,-278,0,68)
 mapPanel.BackgroundColor3=THEME.Panel
 mapPanel.BorderSizePixel=0
 mapPanel.ZIndex=60
@@ -243,7 +358,7 @@ local mapChoices={
     {"MENA","MIDDLE EAST"},
 }
 for index,choice in ipairs(mapChoices) do
-    local b=button(mapPanel,choice[2],UDim2.fromOffset(10,38+(index-1)*39),UDim2.new(1,-20,0,32),function()
+    local b=button(mapPanel,choice[2],UDim2.fromOffset(10,38+(index-1)*39),UDim2.new(1,-20,0,36),function()
         SelectMap:FireServer(choice[1])
         mapPanel.Visible=false
     end)
@@ -254,7 +369,8 @@ mapButton.Activated:Connect(function()
 end)
 
 local notice=Instance.new("TextLabel")
-notice.Size=UDim2.new(0,380,0,38);notice.Position=UDim2.new(.5,-190,0,66);notice.BackgroundColor3=THEME.Panel
+notice.AnchorPoint=Vector2.new(.5,0)
+notice.Size=UDim2.new(0,380,0,38);notice.Position=UDim2.new(.5,0,0,66);notice.BackgroundColor3=THEME.Panel
 notice.BackgroundTransparency=.08;notice.BorderSizePixel=0;notice.Text="";notice.TextWrapped=true;notice.Font=Enum.Font.GothamBold;notice.TextSize=11
 notice.TextColor3=THEME.Success;notice.ZIndex=50;notice.Parent=root;rounded(notice)
 
@@ -287,6 +403,68 @@ local function paintTile(id)
     local b=buffer.create(4)
     buffer.writeu8(b,0,math.floor(c.R*255));buffer.writeu8(b,1,math.floor(c.G*255));buffer.writeu8(b,2,math.floor(c.B*255));buffer.writeu8(b,3,255)
     image:WritePixelsBuffer(Vector2.new(x,y),Vector2.one,b)
+end
+
+local function tileColor(id)
+    local owner=ownerByTile[id] or 0
+    local land=landByTile[id]
+    local terrain=terrainByTile[id] or 1
+    if not land then return THEME.Water end
+    if owner==0 then return THEME.NeutralLand end
+    local base=ownerColor(owner)
+    local k=terrainTint[terrain] or 1
+    return Color3.new(math.clamp(base.R*k,0,1),math.clamp(base.G*k,0,1),math.clamp(base.B*k,0,1))
+end
+
+local function paintChanges(changes)
+    local rows={}
+    for _,change in ipairs(changes or {}) do
+        local id=tonumber(change.id)
+        if id then
+            local y=math.floor((id-1)/W)+1
+            local x=(id-1)%W+1
+            rows[y]=rows[y] or {}
+            rows[y][x]={id=id,change=change}
+        end
+    end
+    for y,row in pairs(rows) do
+        local xs={}
+        for x in pairs(row) do xs[#xs+1]=x end
+        table.sort(xs)
+        local runStart=nil
+        local previous=nil
+        local function flushRun(runEnd)
+            if not runStart then return end
+            local count=runEnd-runStart+1
+            local out=buffer.create(count*4)
+            for offset=0,count-1 do
+                local x=runStart+offset
+                local item=row[x]
+                local change=item.change
+                ownerByTile[item.id]=change.ownerIndex
+                if change.isLand~=nil then landByTile[item.id]=change.isLand==1 end
+                terrainByTile[item.id]=change.terrain or terrainByTile[item.id] or 1
+                local c=tileColor(item.id)
+                local p=offset*4
+                buffer.writeu8(out,p,math.floor(c.R*255))
+                buffer.writeu8(out,p+1,math.floor(c.G*255))
+                buffer.writeu8(out,p+2,math.floor(c.B*255))
+                buffer.writeu8(out,p+3,255)
+            end
+            image:WritePixelsBuffer(Vector2.new(runStart-1,y-1),Vector2.new(count,1),out)
+            runStart=nil
+        end
+        for _,x in ipairs(xs) do
+            if not runStart then
+                runStart=x
+            elseif x~=previous+1 then
+                flushRun(previous)
+                runStart=x
+            end
+            previous=x
+        end
+        flushRun(previous)
+    end
 end
 
 local function paintChunk(packet)
@@ -401,36 +579,82 @@ local function selectTile(id)
     selection.Position=UDim2.new((x+.5)/W,(0),(y+.5)/H,0);selection.Visible=true
 end
 
-click.InputBegan:Connect(function(input)
-    if input.UserInputType==Enum.UserInputType.MouseButton2 then
-        dragging=true;dragStart=Vector2.new(input.Position.X,input.Position.Y);panStart=pan;return
-    end
-    if input.UserInputType~=Enum.UserInputType.MouseButton1 and input.UserInputType~=Enum.UserInputType.Touch then return end
-    local pos=Vector2.new(input.Position.X,input.Position.Y)
-    local id=screenToTile(pos);selectTile(id)
+local function handleTileTap(pos)
+    local id=screenToTile(pos)
+    selectTile(id)
     if not snapshot or not landByTile[id] then return end
     local owner=ownerByTile[id] or 0
     local ownerIdForTile=snapshot.ownerIds[owner]
-    if not myId and owner==0 then Spawn:FireServer(id)
-    elseif myId and ownerIdForTile~=myId then
-        -- Target selected. Press SEND to commit the chosen army.
+    if not myId and owner==0 then
+        Spawn:FireServer(id)
+    end
+end
+
+click.InputBegan:Connect(function(input)
+    local kind=input.UserInputType
+    if kind==Enum.UserInputType.MouseButton2 then
+        dragging=true
+        dragStart=Vector2.new(input.Position.X,input.Position.Y)
+        panStart=pan
+        return
+    end
+    if kind==Enum.UserInputType.Touch then
+        activeTouch=input
+        touchStart=Vector2.new(input.Position.X,input.Position.Y)
+        touchMoved=false
+        panStart=pan
+        return
+    end
+    if kind==Enum.UserInputType.MouseButton1 then
+        handleTileTap(Vector2.new(input.Position.X,input.Position.Y))
     end
 end)
 
 click.InputChanged:Connect(function(input)
-    if input.UserInputType==Enum.UserInputType.MouseMovement and dragging then
+    local kind=input.UserInputType
+    if kind==Enum.UserInputType.MouseMovement and dragging then
         local d=Vector2.new(input.Position.X,input.Position.Y)-dragStart
-        pan=panStart+d;applyTransform()
+        pan=panStart+d
+        userMovedMap=true
+        applyTransform()
+    elseif kind==Enum.UserInputType.Touch and activeTouch==input then
+        local current=Vector2.new(input.Position.X,input.Position.Y)
+        local d=current-touchStart
+        if d.Magnitude>=touchThreshold then
+            touchMoved=true
+            pan=panStart+d
+            userMovedMap=true
+            applyTransform()
+        end
     end
 end)
+
 UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType==Enum.UserInputType.MouseButton2 then dragging=false end
+    local kind=input.UserInputType
+    if kind==Enum.UserInputType.MouseButton2 then
+        dragging=false
+    elseif kind==Enum.UserInputType.Touch and activeTouch==input then
+        if not touchMoved then
+            handleTileTap(Vector2.new(input.Position.X,input.Position.Y))
+        end
+        activeTouch=nil
+    end
 end)
+
 UserInputService.InputChanged:Connect(function(input)
     if input.UserInputType==Enum.UserInputType.MouseWheel then
-        zoom=math.clamp(zoom+input.Position.Z*.18,ZOOM_MIN,ZOOM_MAX);applyTransform()
+        zoom=math.clamp(zoom+input.Position.Z*.18,ZOOM_MIN,ZOOM_MAX)
+        userMovedMap=true
+        applyTransform()
     end
 end)
+
+if workspace.CurrentCamera then
+    workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+        updateResponsiveScale()
+        if not userMovedMap then fitMapToViewport() end
+    end)
+end
 
 Snapshot.OnClientEvent:Connect(function(data)
     snapshot=data;colorCache={}
@@ -450,12 +674,7 @@ Snapshot.OnClientEvent:Connect(function(data)
     else
         topStats.Text="DEPLOY • "..tostring(data.mapTitle or data.mapKey or "WORLD").." • "..tostring(data.width).." × "..tostring(data.height).." PIXELS"
     end
-    for _,change in ipairs(data.tileChanges or {}) do
-        ownerByTile[change.id]=change.ownerIndex
-        if change.isLand~=nil then landByTile[change.id]=change.isLand==1 end
-        terrainByTile[change.id]=change.terrain or terrainByTile[change.id] or 1
-        paintTile(change.id)
-    end
+    paintChanges(data.tileChanges or {})
     boardList:ClearAllChildren()
     for i,p in ipairs((function()
         local e={};for _,v in pairs(data.players or {}) do e[#e+1]=v end
@@ -483,12 +702,17 @@ Notice.OnClientEvent:Connect(function(data)
     notice.TextColor3=data.kind=="error" and THEME.Error or THEME.Success
 end)
 
+local function normalizeTroopInput(text)
+    local digits=string.gsub(tostring(text or ""),",","")
+    digits=string.gsub(digits,"%D","")
+    local value=tonumber(digits)
+    if not value then value=sendTroops end
+    return math.floor(math.clamp(value,100,math.max(100,myTroops)))
+end
+
 amountBox.FocusLost:Connect(function()
-    local value=tonumber(amountBox.Text)
-    if value then
-        sendTroops=math.floor(math.clamp(value,100,math.max(100,myTroops)))
-        amountBox.Text=tostring(sendTroops)
-    else amountBox.Text=tostring(sendTroops) end
+    sendTroops=normalizeTroopInput(amountBox.Text)
+    amountBox.Text=tostring(sendTroops)
 end)
 EnterWorld.OnClientEvent:Connect(function(data)
     gui.Enabled=true
@@ -503,5 +727,8 @@ amountSlider.MouseButton1Click:Connect(function()
     sendTroops=math.min(next,math.max(100,myTroops));amountBox.Text=tostring(sendTroops)
 end)
 
-applyTransform()
+updateResponsiveScale()
+task.defer(function()
+    fitMapToViewport()
+end)
 Request:FireServer()
