@@ -8,11 +8,45 @@ local Shared=ReplicatedStorage:WaitForChild("Shared")
 local State=require(Shared.WorldPvP.PixelWorldState)
 local Rules=require(Shared.WorldPvP.Rules)
 local MapRegistry=require(Shared.WorldPvP.MapRegistry)
+local RateLimiter=require(Shared.WorldPvP.RateLimiter)
 
 local world=nil
 local worldActive=false
 local matchMode=nil
 local matchMap=nil
+
+local limiter=RateLimiter.new()
+
+local REMOTE_COOLDOWNS={
+    SelectMode=.35,
+    SelectMap=.35,
+    EnterWorld=.75,
+    Spawn=.5,
+    Attack=.15,
+    Build=.25,
+    Nuke=1.0,
+    RequestSnapshot=1.0,
+}
+
+local function allow(player,action)
+    local interval=REMOTE_COOLDOWNS[action] or .25
+    return limiter:allow(player.UserId,action,interval,os.clock())
+end
+
+local function validInteger(value,minValue,maxValue)
+    local number=tonumber(value)
+    if not number or number~=number or number==math.huge or number==-math.huge then return nil end
+    if number%1~=0 or number<minValue or number>maxValue then return nil end
+    return math.floor(number)
+end
+
+local VALID_BUILDINGS={
+    City=true,Factory=true,Port=true,DefensePost=true,SAM=true,MissileSilo=true,Warship=true,
+}
+
+local VALID_WEAPONS={
+    Atom=true,Hydrogen=true,MIRV=true,
+}
 
 local remotes=ReplicatedStorage:FindFirstChild("WorldPvPRemotes") or Instance.new("Folder")
 remotes.Name="WorldPvPRemotes"
@@ -122,6 +156,10 @@ local function broadcast()
 end
 
 local function startMatch(player,mapId)
+    if not allow(player,"EnterWorld") then
+        notice(player,"مهلًا، أعد المحاولة بعد لحظة.","error")
+        return
+    end
     local definition=MapRegistry.get(mapId)
     if not definition then
         notice(player,"الخريطة غير موجودة.","error")
@@ -171,6 +209,7 @@ local function startMatch(player,mapId)
 end
 
 SelectMode.OnServerEvent:Connect(function(player,mode)
+    if not allow(player,"SelectMode") then return end
     if worldActive then
         notice(player,"المباراة بدأت بالفعل.","error")
         return
@@ -197,6 +236,7 @@ SelectMode.OnServerEvent:Connect(function(player,mode)
 end)
 
 SelectMap.OnServerEvent:Connect(function(player,mapId)
+    if not allow(player,"SelectMap") then return end
     if worldActive then
         notice(player,"هناك مباراة جارية بالفعل.","error")
         return
@@ -213,12 +253,18 @@ SelectMap.OnServerEvent:Connect(function(player,mapId)
 end)
 
 Spawn.OnServerEvent:Connect(function(player,tileId)
+    if not allow(player,"Spawn") then return end
     if not world or not worldActive or not isInWorld(player) then
         notice(player,"ارجع إلى لوبي 404 FOUND واختر النمط والخريطة.","error")
         return
     end
 
-    local ok,result=world:spawnHuman(player.UserId,player.DisplayName or player.Name,tonumber(tileId))
+    local id=validInteger(tileId,1,world.map.width*world.map.height)
+    if not id then
+        notice(player,"موقع البداية غير صالح.","error")
+        return
+    end
+    local ok,result=world:spawnHuman(player.UserId,player.DisplayName or player.Name,id)
     if not ok then
         notice(player,result,"error")
         return
@@ -228,11 +274,18 @@ Spawn.OnServerEvent:Connect(function(player,tileId)
 end)
 
 Attack.OnServerEvent:Connect(function(player,tileId,amount)
+    if not allow(player,"Attack") then return end
     if not world or not worldActive or not isInWorld(player) then
         notice(player,"لم تدخل المباراة بعد.","error")
         return
     end
-    local ok,attackId,sentTroops=world:attack(player.UserId,tonumber(tileId),amount)
+    local id=validInteger(tileId,1,world.map.width*world.map.height)
+    local troops=validInteger(amount,Rules.Attack.MinimumCommit,1000000000)
+    if not id or not troops then
+        notice(player,"بيانات الهجوم غير صالحة.","error")
+        return
+    end
+    local ok,attackId,sentTroops=world:attack(player.UserId,id,troops)
     if not ok then
         notice(player,attackId,"error")
         return
@@ -241,11 +294,18 @@ Attack.OnServerEvent:Connect(function(player,tileId,amount)
 end)
 
 Build.OnServerEvent:Connect(function(player,tileId,kind)
+    if not allow(player,"Build") then return end
     if not world or not worldActive or not isInWorld(player) then
         notice(player,"لم تدخل المباراة بعد.","error")
         return
     end
-    local ok,msg=world:build(player.UserId,tonumber(tileId),tostring(kind))
+    local id=validInteger(tileId,1,world.map.width*world.map.height)
+    local buildKind=type(kind)=="string" and kind or ""
+    if not id or not VALID_BUILDINGS[buildKind] then
+        notice(player,"أمر البناء غير صالح.","error")
+        return
+    end
+    local ok,msg=world:build(player.UserId,id,buildKind)
     if not ok then
         notice(player,msg,"error")
     else
@@ -254,11 +314,18 @@ Build.OnServerEvent:Connect(function(player,tileId,kind)
 end)
 
 Nuke.OnServerEvent:Connect(function(player,tileId,weaponKind)
+    if not allow(player,"Nuke") then return end
     if not world or not worldActive or not isInWorld(player) then
         notice(player,"لم تدخل المباراة بعد.","error")
         return
     end
-    local ok,msg=world:nuke(player.UserId,tonumber(tileId),tostring(weaponKind or "Atom"))
+    local id=validInteger(tileId,1,world.map.width*world.map.height)
+    local weapon=type(weaponKind)=="string" and weaponKind or "Atom"
+    if not id or not VALID_WEAPONS[weapon] then
+        notice(player,"نوع السلاح النووي غير صالح.","error")
+        return
+    end
+    local ok,msg=world:nuke(player.UserId,id,weapon)
     if not ok then
         notice(player,msg,"error")
     else
@@ -267,14 +334,15 @@ Nuke.OnServerEvent:Connect(function(player,tileId,weaponKind)
 end)
 
 Request.OnServerEvent:Connect(function(player)
+    if not allow(player,"RequestSnapshot") then return end
     if not worldActive then
         notice(player,"أهلاً بك في 404 FOUND. اختر Teams أو FFA أو Solo ثم الخريطة.","info")
         return
     end
 
     if not isInWorld(player) then
-        player:SetAttribute("WorldDominionActive",true)
-        EnterWorld:FireClient(player,{mode=matchMode,mapKey=matchMap,mapTitle=world.mapTitle})
+        notice(player,"هناك مباراة جارية. اقترب من ENTER WORLD للانضمام.","info")
+        return
     end
     sendWorld(player)
 end)
@@ -289,6 +357,7 @@ Players.PlayerAdded:Connect(function(player)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
+    limiter:reset(player.UserId)
     if world and world.byUser[player.UserId] then
         local nation=world.byUser[player.UserId]
         nation.userId=nil
@@ -323,6 +392,7 @@ task.defer(function()
     for _,entry in ipairs(modeEntries) do
         if entry.prompt then
             entry.prompt.Triggered:Connect(function(player)
+                if not allow(player,"SelectMode") then return end
                 if worldActive then
                     notice(player,"المباراة بدأت بالفعل. لا يمكن تغيير النمط الآن.","error")
                     return
@@ -336,6 +406,7 @@ task.defer(function()
     for _,entry in ipairs(mapEntries) do
         if entry.prompt then
             entry.prompt.Triggered:Connect(function(player)
+                if not allow(player,"SelectMap") then return end
                 if worldActive then
                     notice(player,"المباراة بدأت بالفعل. انضم إلى المباراة الحالية من نفس الإعدادات.","error")
                     return
@@ -350,6 +421,7 @@ task.defer(function()
     local enterPrompt=root.EnterPad and root.EnterPad:FindFirstChild("EnterPrompt")
     if enterPrompt then
         enterPrompt.Triggered:Connect(function(player)
+            if not allow(player,"EnterWorld") then return end
             local mode=player:GetAttribute("WorldDominionMode") or "FFA"
             local mapId=player:GetAttribute("WorldDominionMap") or MapRegistry.Default
             player:SetAttribute("WorldDominionMode",mode)
