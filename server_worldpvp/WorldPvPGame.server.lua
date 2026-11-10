@@ -156,10 +156,6 @@ local function broadcast()
 end
 
 local function startMatch(player,mapId)
-    if not allow(player,"EnterWorld") then
-        notice(player,"مهلًا، أعد المحاولة بعد لحظة.","error")
-        return
-    end
     local definition=MapRegistry.get(mapId)
     if not definition then
         notice(player,"الخريطة غير موجودة.","error")
