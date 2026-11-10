@@ -727,7 +727,7 @@ EnterWorld.OnClientEvent:Connect(function(data)
     Request:FireServer()
 end)
 
-amountSlider.MouseButton1Click:Connect(function()
+amountSlider.Activated:Connect(function()
     local steps={1000,5000,10000,25000,50000,100000}
     local next=steps[#steps]
     for _,v in ipairs(steps) do if v>sendTroops then next=v;break end end
