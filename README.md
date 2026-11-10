@@ -1,229 +1,135 @@
-# Island Dominion — Living Grid Strategy
+# WorldDominion — World PvP
 
-لعبة استراتيجية سريعة تعتمد على شبكة مربعات (Color Flood-It style) مع طبقات استراتيجية عميقة:
-اقتصاد، أنواع أراضي، قدرات سيادة، أحداث عالمية، ذكاء اصطناعي بشخصيات، ووضع Multiplayer.
+لعبة Roblox استراتيجية لحظية مبنية حول خريطة عالمية/إقليمية بكسلات، توسع متصل، اقتصاد، مبانٍ، أسلحة نووية، وذكاء اصطناعي.
 
----
+المشروع انتقل نهائيًا من نظام **Island Dominion** القديم إلى مسار **World PvP**. نظام Island Dominion القديم لم يعد جزءًا من شجرة Rojo runtime وتم تنظيف ملفاته غير المستخدمة.
 
-## 📁 هيكل المشروع
+## Runtime الحالي
 
 ```
-IslandDominion/
-├── default.project.json          # إعدادات Rojo للبناء
-├── README.md                     # هذا الملف
+WorldDominion/
+├── default.project.json
+├── client_worldpvp/
+│   └── WorldPvPClient.client.lua
+├── server_worldpvp/
+│   └── WorldPvPGame.server.lua
 ├── shared/
-│   ├── MapData.lua               # بيانات الخريطة، الألوان، أنواع الأراضي، السمات
-│   └── Engine/                   # محرك اللعبة (plain data + logic)
-│       ├── Cell.lua
-│       ├── Board.lua
-│       ├── GameState.lua
-│       ├── TurnManager.lua
-│       ├── ResourceSystem.lua
-│       ├── WinSystem.lua
-│       ├── CaptureSystem.lua
-│       ├── ValidationSystem.lua
-│       ├── PowerSystem.lua       (M5)
-│       ├── EventSystem.lua       (M5)
-│       ├── MatchModifierSystem.lua (M5)
-│       ├── ProgressionSystem.lua (M5)
-│       ├── MultiplayerManager.lua (M6)
-│       ├── AIConfig.lua          (M3)
-│       └── AIPlayer.lua          (M3)
-├── server/
-│   ├── RemoteSetup.server.lua    # إنشاء RemoteEvents بشكل آمن
-│   └── GameManager.server.lua    # مدير اللعبة (server authority)
-├── client/
-│   └── ClientController.client.lua # واجهة المستخدم (LocalScript)
+│   └── WorldPvP/
+│       ├── CountryMapData.lua
+│       ├── MapRegistry.lua
+│       ├── PixelWorldState.lua
+│       ├── RateLimiter.lua
+│       ├── RemoteValidation.lua
+│       ├── Rules.lua
+│       └── TileMap.lua
 └── tests/
-    └── CoreTests.lua             (M7) اختبارات انعكاسية للوحدات الأساسية
+    └── WorldPvPTests.lua
 ```
 
----
+## تدفق اللعب
 
-## 🚀 طريقة التشغيل
+1. اللاعب يظهر في لوبي 3D عند بيت **404 FOUND**.
+2. يختار Teams أو FFA أو Solo.
+3. يختار World أو Europe أو Asia أو Middle East.
+4. يدخل من **ENTER WORLD**.
+5. بعد الدخول تصبح خريطة البكسلات هي مساحة اللعب الرئيسية.
+6. يختار نقطة بداية، ثم يهاجم الأراضي المجاورة ويطور الاقتصاد والمباني.
 
-### باستخدام Rojo (مستحسن)
+## Server Authority
 
-1. تأكد أن لديك [Rojo](https://rojo.space/) مثبتاً.
-2. في مجلد المشروع، شغّل:
-   ```bash
-   rojo build
-   ```
-3. سيولد ملف `.rbxlx` يمكن فتحه في **Roblox Studio**.
-4. اضغط **Play** لبدء اللعبة.
+العميل لا يقرر نتيجة أي عملية استراتيجية.
 
-### بدون Rojo (نسخ ولصق يدوي)
+العميل يرسل فقط نية اللاعب عبر RemoteEvent:
+- Spawn
+- Attack
+- Build
+- Nuke
+- SelectMode
+- SelectMap
+- RequestSnapshot
 
-إذا لم تستخدم Rojo، أنجب الملفات التالية في Roblox Studio يدوياً:
+الخادم يتحقق من:
+- حالة المباراة وعضوية اللاعب فيها.
+- صحة أنواع المدخلات.
+- حدود رقم الخلية.
+- صحة نوع البناء والسلاح.
+- الحد الأدنى للهجوم.
+- من يملك الخلية ومن يمكن مهاجمته.
+- الحماية، التحالفات، الأرض والملاحة.
+- الموارد والتكاليف والتبريد والنتيجة النهائية.
 
-| المسار في Studio | نوع الملف | الملف المصدر |
-|------------------|-----------|-------------|
-| `ReplicatedStorage/Shared/MapData` | ModuleScript | `shared/MapData.lua` |
-| `ReplicatedStorage/Shared/Engine/*` | ModuleScript | `shared/Engine/*.lua` |
-| `ReplicatedStorage/GameRemotes` | Folder (تُنشأ تلقائياً) | — |
-| `ServerScriptService/RemoteSetup` | Script | `server/RemoteSetup.server.lua` |
-| `ServerScriptService/GameManager` | Script | `server/GameManager.server.lua` |
-| `StarterPlayer/StarterPlayerScripts/ClientController` | LocalScript | `client/ClientController.client.lua` |
-| `ServerStorage/Tests/CoreTests` | ModuleScript | `tests/CoreTests.lua` |
+## Remote Security
 
----
+يوجد الآن:
+- `RateLimiter.lua`: حد مستقل لكل لاعب ولكل نوع إجراء.
+- `RemoteValidation.lua`: تحقق موحد من integers والخيارات المسموحة.
+- منع `RequestSnapshot` من إدخال اللاعب إلى المباراة دون المرور من **ENTER WORLD**.
+- تنظيف حالة الـrate limiter عند مغادرة اللاعب.
+- رفض payloads غير الصالحة قبل وصولها إلى محرك المباراة.
 
-## 🎮 قواعد اللعب
+التزامات التقريبية الحالية:
+- Attack: 0.15s
+- Build: 0.25s
+- Spawn: 0.5s
+- SelectMode/SelectMap: 0.35s
+- EnterWorld: 0.75s
+- Nuke: 1.0s
+- Snapshot request: 1.0s
 
-1. تبدأ كل لعبة على شبكة 10×10 (أو 15×15، 20×20).
-2. كل خلية لها نوع أرضية (سهل، غابة، منجم، آثار، حصن، عاصمة، ميناءً) ولون تضاريس.
-3. في دورك، اختر لوناً واحداً؛ تُحتجز جميع الخلايا المجاورة لأراضيك التي تحمل ذلك اللون وت become ملكك.
-4. عند احتجاز خلية، تحصل على مكافأة一次ية (baseYield) وتضيف إنتاجها الدوري إلى مواردك.
-5. ثم يلعب الخصوم (AI أو لاعبين آخرين) بنفس المنطق.
-6. تربح عندما تسيطر على **جميع** خلايا الخريطة (100%).
+## Client Performance / Mobile
 
----
+الواجهة الجديدة:
+- Mobile-first touch targets.
+- أزرار رئيسية بحجم يقارب 44px أو أكثر.
+- صفوف تحكم أفقية قابلة للتمرير على الشاشات الضيقة.
+- Pan بالماوس واللمس.
+- Zoom متدرج مع fit تلقائي للخريطة.
+- تحديثات EditableImage event-driven بدل إعادة بناء الخريطة كاملة.
+- تجميع tile changes المتجاورة في runs قبل الكتابة للصورة.
 
-## 🧠 أنواع الأراضي
+## الاختبارات
 
-| النوع | الرمز | المكافأة عند الاحتجاز | الإنتاج لكل دور | القيمة الاستراتيجية | الدفاع |
-|-------|-------|----------------------|-----------------|-------------------|--------|
-| سهل | 🌾 | Food +8 | Food +2 | 1 | 0% |
-| غابة | 🌲 | Wood +8 | Wood +2 | 2 | 0% |
-| منجم | ⛏️ | Gold +10 | Gold +3 | 3 | 0% |
-| آثار | 🏛️ | Relic +1 | — | 4 | 0% |
-| حصن | 🏰 | Gold +5, Wood +5 | Gold +1, Wood +1 | 5 | 30% |
-| عاصمة | 🏛️ | Gold +15, Food +10, Wood +10 | Gold +3, Food +2, Wood +2 | 10 | 50% |
-| ميناءً | ⚓ | Gold +7 | Gold +2 | 3 | 0% |
+الاختبارات النشطة في:
+`tests/WorldPvPTests.lua`
 
----
+وتغطي:
+- الخرائط الإقليمية.
+- spawn.
+- الهجوم والاتصال.
+- حماية spawn.
+- retreat/refund.
+- buildings.
+- RemoteValidation.
+- RateLimiter.
 
-## ⚡ قوى السيادة (Powers)
+## التشغيل
 
-| القوة | التكلفة | التبريد | التأثير |
-|-------|--------|---------|--------|
-| كشّاف (Scout) | 50 Gold | 3 أدوار | كشف منطقة مؤقتاً |
-| حصاد (Harvest) | 30 Gold, 20 Food, 10 Wood | 4 أدوار | مضاعفة إنتاج إقليم لدورين |
-| تحصين (Fortify) | 40 Gold, 10 Food, 20 Wood | 3 أدوار | رفع دفاع إقليم ally |
-| تخريب (Sabotage) | 60 Gold, 30 Food | 5 أدوار | خفض إنتاج إقليم خصم لدور واحد |
-| تغيير لون (Color Shift) | 80 Gold, 40 Food, 40 Wood | 6 أدوار | إعادة رول محدود للألوان |
-| موجة صدمية (Shockwave) | 100 Gold, 50 Food, 50 Wood | 8 أدوار | توسع من نقطة معينة مرة استثنائية |
+بعد سحب آخر نسخة:
 
----
-
-## 🌍 أحداث عالمية (World Events)
-
-| الحدث | المدة | التأثير |
-|-------|-------|---------|
-| زخّات النيازك (Meteor Shower) | 2 أدوار | المناجم تصبح أغلى (تكلفة مضاعفة) |
-| الأمطار الغزيرة (Great Rain) | 2 أدوار | إنتاج الطعام +30% |
-| حريق غابات (Wildfire) | 2 أدوار | الغابات إنتاج أقل بنسبة 50% |
-| المد العالي (High Tide) | 3 أدوار | الموانئ تصبح أكثر استراتيجية (+50% القيمة) |
-| القافلة المفقودة (Lost Caravan) | 1 دور | مكافأة نادرة تظهر في منطقة عشوائية |
-
----
-
-## ⚙️ معدلات المباراة (Match Modifiers)
-
-| المعدل | التأثير |
-|--------|---------|
-| كلاسيكي (Classic) | الوضع القياسي |
-| جزر غنية (Rich Islands) | موارد ابتدائية مضاعفة |
-| شتاء قاسٍ (Harsh Winter) | إنتاج أقل، أحداث أكثر تكراراً |
-| سباق القطع النادرة (Relic Rush) | فرص أعلى للحصول على Relics |
-| فوضى (Chaos) | أحداث متكررة وتغيرات سريعة |
-
----
-
-## 🤖 الذكاء الاصطناعي
-
-### شخصيات AI:
-- **Warlord**: يركز على التوسع والهجوم
-- **Merchant**: يركز على الموارد والاقتصاد
-- **Guardian**: يركز على الدفاع والرأس المال
-- **Trickster**: يركز على قطع خطوط الخصوم
-
-### مستويات الصعوبة:
-- **Easy**: تقييم خطوتين واحدة، 30% عشوائية
-- **Normal**: تقييم تكتيكي، 15% عشوائية
-- **Hard**: تقييم خطوتين، 5% عشوائية
-
----
-
-## 🧪 تشغيل الاختبارات (M7)
-
-تحتوي وحدة `tests/CoreTests.lua` على اختبارات للوحدات الأساسية:
-- Board (الخلايا والجيران والتسلسل والعزل)
-- Capture System (الاحتجاز والعزل عن الحالة الحقيقية)
-- Win System (شرط الفوز)
-- Validation System (التحقق من المدخلات)
-- AI System (الشخصيات والمستويات والعزل)
-- Power System (التكلفة والتبريد)
-- Event System (الأحداث والمدة)
-- Match Modifier System (المعدلات والموارد الابتدائية)
-- Progression System (XP، الرتب، الإنجازات)
-- GameState Clone Isolation (أهم اختبار للذكاء الاصطناعي)
-
-لتشغيل الاختبارات في Roblox Studio:
-```lua
-local Tests = game.ServerStorage.Tests.CoreTests
-local result = require(Tests):run()
-print("All passed:", result)
+```bat
+git pull --ff-only
+rojo build -o IslandDominion.rbxlx
 ```
 
----
+ثم افتح الملف الناتج في Roblox Studio واختبر:
+- Edit mode: لوبي 404 FOUND ظاهر.
+- Play: اختيار mode/map ثم ENTER WORLD.
+- Desktop.
+- Mobile Device Emulator.
 
-## 🔐 الأمان
+مهم: نجاح/فشل أمر Rojo المحلي يجب التحقق منه من نفس جهاز التطوير لأن هذا المستودع لا يقوم بتشغيل Roblox Studio محليًا.
 
-- 모든 الإجراءات من العميل تمر عبر تحقق من صحة على السيرفر (اللون، حجم الخريطة، الدور، القوة).
-- لا يمكن للعميل تغيير: المالك، الموارد، الدور، حالة الفوز، حالة الذكاء الاصطناعي.
-- تقييد معدل الطلبات (Rate Limiting): 10 طلبات في الدقيقة لكل لاعب.
-- موارد كل لاعب خاصة به فقط (لا تُرسل موارد الخصوم للعميل).
+## Persistence
 
----
+لا يوجد DataStore/اقتصاد دائم حاليًا. حالة المباراة والجيش والذهب تعيش داخل جلسة الخادم فقط. لن تتم إضافة persistence قبل تثبيت gameplay الأساسي واختبار multiplayer الحقيقي.
 
-## 📊 مراحل التطوير (مُنَفَّذة)
+## التصميم
 
-| المرحلة | الاسم | الحالة |
-|---------|-------|--------|
-| M0 | Foundation / Boot Repair | ✅ مكتمل |
-| M1 | Core Strategy Engine | ✅ مكتمل |
-| M2 | Living Map + Economy | ✅ مكتمل |
-| M3 | Smart AI + Personalities | ✅ مكتمل |
-| M4 | Premium UI/UX + Game Feel | ✅ مكتمل |
-| M5 | World Events + Powers + Progression | ✅ مكتمل |
-| M6 | Multiplayer + Fairness | ✅ مكتمل |
-| M7 | Polish + Performance + Content | ✅ مكتمل |
+الهوية الحالية تستخدم:
+forest green / olive / earth brown / gold / clay / ivory
 
----
+ولا تعتمد على واجهات زرقاء أو blue gradients.
 
-## 🛠️ تحسينات مقترحة للمراحل القادمة
+## ملاحظات الملكية
 
-- حفظ البيانات (DataStore) للتقدم والإنجازات.
-- دعم لاعبين حقيقيين متعددين عبر Roblox Multiplayer.
-- تأثيرات بصرية متقدمة (جسيمات، توهج، تقطيع).
-- أصوات حقيقية بدلاً من Placeholders.
-- متجر ترقيات داخل اللعبة.
-- أLeaderboard عالمي.
-
----
-
-## 📄 ترخيص
-
-هذا المشروع لأغراض تعليمية وتطويرية. يمكن تعديله وتوزيعه freely.
-## World PvP Pivot (2026-11-07)
-
-The project runtime has now pivoted from the old turn-based Island Dominion grid to a Roblox-native real-time World PvP foundation inspired by the broad RoWorld/OpenFront gameplay loop.
-
-### Current playable direction
-
-- 55-nation roster target
-- Real-time world map
-- Nation selection
-- Territory ownership and adjacent expansion
-- Gold and troop economy
-- Cities, ports, factories, defense posts and missile silos
-- Strategic nuclear strike
-- Alliance offer/response model
-- 80% world-control victory target
-- Server-authoritative validation
-- Original Roblox-native UI and simulation code
-
-The old Island Dominion implementation remains in the repository history but is no longer mapped by `default.project.json`.
-
-**Important:** this is an original Roblox implementation inspired by the genre/gameplay structure. It does not contain RoWorld's private Roblox source or proprietary assets. See `docs/ROWORLD_RESEARCH_AND_PIVOT.md` for research, licensing notes and the W0–W8 migration plan.
+هذا تنفيذ Roblox أصلي مستوحى من بنية ألعاب السيطرة على الأراضي في هذا النوع، ولا يعتمد على source code خاص أو assets خاصة بلعبة أخرى.
