@@ -80,7 +80,7 @@ brand.Size=UDim2.fromOffset(190,58);brand.Position=UDim2.fromOffset(18,0);brand.
 brand.Text="WORLD PvP";brand.Font=Enum.Font.GothamBlack;brand.TextSize=22;brand.TextColor3=THEME.Text
 brand.TextXAlignment=Enum.TextXAlignment.Left;brand.Parent=top
 local topStats=Instance.new("TextLabel")
-topStats.Size=UDim2.new(1,-430,1,0);topStats.Position=UDim2.fromOffset(215,0);topStats.BackgroundTransparency=1
+topStats.Size=UDim2.new(1,-285,1,0);topStats.Position=UDim2.fromOffset(215,0);topStats.BackgroundTransparency=1
 topStats.Text="Loading world...";topStats.Font=Enum.Font.GothamBold;topStats.TextSize=13
 topStats.TextColor3=THEME.TextMuted;topStats.TextXAlignment=Enum.TextXAlignment.Left;topStats.Parent=top
 
@@ -121,7 +121,7 @@ local function button(parent,text,pos,size,callback)
     rounded(b);b.Activated:Connect(callback);return b
 end
 
-local mapButton=button(top,"MAP",UDim2.new(1,-122,0,12),UDim2.fromOffset(48,34),function() end)
+local mapButton=button(top,"MAP",UDim2.new(1,-64,0,7),UDim2.fromOffset(56,44),function() end)
 mapButton.BackgroundColor3=THEME.Gold
 local viewportPadding=12
 local function applyTransform()
@@ -143,9 +143,16 @@ local function updateResponsiveScale()
     local size=workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280,720)
     local compact=size.X<700 or size.Y<620
     rootScale.Scale=1
+    brand.Size=UDim2.fromOffset(compact and 122 or 190,58)
+    brand.TextSize=compact and 16 or 22
+    topStats.Position=UDim2.fromOffset(compact and 136 or 215,0)
+    topStats.Size=UDim2.new(1,-(compact and 200 or 285),1,0)
+    topStats.TextSize=compact and 10 or 13
+    mapButton.Position=UDim2.new(1,compact and -60 or -64,0,7)
+    mapButton.Size=UDim2.fromOffset(compact and 52 or 56,44)
     board.Size=UDim2.fromOffset(compact and 190 or 225,compact and 214 or 246)
     board.Position=UDim2.fromOffset(10,compact and 68 or 72)
-    mapPanel.Size=UDim2.fromOffset(compact and 228 or 260,compact and 208 or 210)
+    mapPanel.Size=UDim2.fromOffset(compact and 228 or 260,compact and 224 or 230)
     mapPanel.Position=UDim2.new(1,-(compact and 240 or 278),0,68)
     notice.Size=UDim2.new(1,-(compact and 24 or 380),0,38)
     notice.Position=UDim2.new(.5,0,0,66)
@@ -330,7 +337,7 @@ end)
 mirvButton.BackgroundColor3=THEME.Brown
 
 local mapPanel=Instance.new("Frame")
-mapPanel.Size=UDim2.fromOffset(260,210)
+mapPanel.Size=UDim2.fromOffset(260,230)
 mapPanel.Position=UDim2.new(1,-278,0,68)
 mapPanel.BackgroundColor3=THEME.Panel
 mapPanel.BorderSizePixel=0
@@ -358,7 +365,7 @@ local mapChoices={
     {"MENA","MIDDLE EAST"},
 }
 for index,choice in ipairs(mapChoices) do
-    local b=button(mapPanel,choice[2],UDim2.fromOffset(10,38+(index-1)*39),UDim2.new(1,-20,0,36),function()
+    local b=button(mapPanel,choice[2],UDim2.fromOffset(10,38+(index-1)*44),UDim2.new(1,-20,0,44),function()
         SelectMap:FireServer(choice[1])
         mapPanel.Visible=false
     end)
