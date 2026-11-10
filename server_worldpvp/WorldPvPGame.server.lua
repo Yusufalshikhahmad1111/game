@@ -9,6 +9,7 @@ local State=require(Shared.WorldPvP.PixelWorldState)
 local Rules=require(Shared.WorldPvP.Rules)
 local MapRegistry=require(Shared.WorldPvP.MapRegistry)
 local RateLimiter=require(Shared.WorldPvP.RateLimiter)
+local Validation=require(Shared.WorldPvP.RemoteValidation)
 
 local world=nil
 local worldActive=false
@@ -33,19 +34,16 @@ local function allow(player,action)
     return limiter:allow(player.UserId,action,interval,os.clock())
 end
 
-local function validInteger(value,minValue,maxValue)
-    local number=tonumber(value)
-    if not number or number~=number or number==math.huge or number==-math.huge then return nil end
-    if number%1~=0 or number<minValue or number>maxValue then return nil end
-    return math.floor(number)
-end
-
 local VALID_BUILDINGS={
     City=true,Factory=true,Port=true,DefensePost=true,SAM=true,MissileSilo=true,Warship=true,
 }
 
 local VALID_WEAPONS={
     Atom=true,Hydrogen=true,MIRV=true,
+}
+
+local VALID_MODES={
+    Teams=true,FFA=true,Solo=true,
 }
 
 local remotes=ReplicatedStorage:FindFirstChild("WorldPvPRemotes") or Instance.new("Folder")
@@ -211,8 +209,8 @@ SelectMode.OnServerEvent:Connect(function(player,mode)
         return
     end
 
-    mode=tostring(mode or "")
-    if mode~="Teams" and mode~="FFA" and mode~="Solo" then
+    mode=Validation.choice(mode,VALID_MODES)
+    if not mode then
         notice(player,"نمط غير صالح.","error")
         return
     end
@@ -255,7 +253,7 @@ Spawn.OnServerEvent:Connect(function(player,tileId)
         return
     end
 
-    local id=validInteger(tileId,1,world.map.width*world.map.height)
+    local id=Validation.integer(tileId,1,world.map.width*world.map.height)
     if not id then
         notice(player,"موقع البداية غير صالح.","error")
         return
@@ -276,7 +274,7 @@ Attack.OnServerEvent:Connect(function(player,tileId,amount)
         return
     end
     local id=validInteger(tileId,1,world.map.width*world.map.height)
-    local troops=validInteger(amount,Rules.Attack.MinimumCommit,1000000000)
+    local troops=Validation.integer(amount,Rules.Attack.MinimumCommit,1000000000)
     if not id or not troops then
         notice(player,"بيانات الهجوم غير صالحة.","error")
         return
@@ -296,8 +294,8 @@ Build.OnServerEvent:Connect(function(player,tileId,kind)
         return
     end
     local id=validInteger(tileId,1,world.map.width*world.map.height)
-    local buildKind=type(kind)=="string" and kind or ""
-    if not id or not VALID_BUILDINGS[buildKind] then
+    local buildKind=Validation.choice(kind,VALID_BUILDINGS)
+    if not id or not buildKind then
         notice(player,"أمر البناء غير صالح.","error")
         return
     end
@@ -316,8 +314,8 @@ Nuke.OnServerEvent:Connect(function(player,tileId,weaponKind)
         return
     end
     local id=validInteger(tileId,1,world.map.width*world.map.height)
-    local weapon=type(weaponKind)=="string" and weaponKind or "Atom"
-    if not id or not VALID_WEAPONS[weapon] then
+    local weapon=Validation.choice(weaponKind,VALID_WEAPONS) or "Atom"
+    if not id or not weapon then
         notice(player,"نوع السلاح النووي غير صالح.","error")
         return
     end
